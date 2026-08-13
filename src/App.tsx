@@ -13,12 +13,35 @@ interface DialogueState {
   callback: () => void;
 }
 
+interface ChoiceState {
+  title: string;
+  optionA: string;
+  optionB: string;
+  callback: (choice: 'A' | 'B') => void;
+}
+
 function App() {
-  const [activeScene, setActiveScene] = useState<GameScene>('LANDING');
-  const [party, setParty] = useState<string[]>(['Ryan']);
+  const [activeScene, setActiveScene] = useState<GameScene>('UVCE');
+  const [party, setParty] = useState<string[]>(['Ryan', 'Sanketh']);
   const [dialogue, setDialogue] = useState<DialogueState | null>(null);
+  const [choices, setChoices] = useState<ChoiceState | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [showWeddingCard, setShowWeddingCard] = useState(false);
+
+  // Check URL query parameters to jump directly to specific scenes for testing
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sceneParam = params.get('scene')?.toUpperCase() as GameScene | null;
+    if (sceneParam && ['SCHOOL', 'BATTLE', 'UVCE', 'SAP', 'ENDING'].includes(sceneParam)) {
+      setActiveScene(sceneParam);
+      // Pre-populate party based on the scene for correct rendering and mechanics
+      if (sceneParam === 'UVCE' || sceneParam === 'SAP') {
+        setParty(['Ryan', 'Sanketh']);
+      } else if (sceneParam === 'ENDING') {
+        setParty(['Ryan', 'Sanketh', 'Anam']);
+      }
+    }
+  }, []);
 
   // Keyboard space listener to advance dialogue
   useEffect(() => {
@@ -73,6 +96,21 @@ function App() {
       lines,
       currentIndex: 0,
       callback: onComplete,
+    });
+  };
+
+  // Helper passed to Phaser to trigger choice selections from inside scenes
+  const triggerChoicesFromPhaser = (
+    title: string,
+    optionA: string,
+    optionB: string,
+    onSelect: (choice: 'A' | 'B') => void
+  ) => {
+    setChoices({
+      title,
+      optionA,
+      optionB,
+      callback: onSelect,
     });
   };
 
@@ -150,6 +188,7 @@ function App() {
               currentScene={activeScene}
               onSceneChange={(scene) => setActiveScene(scene as GameScene)}
               triggerDialogue={triggerDialogueFromPhaser}
+              triggerChoices={triggerChoicesFromPhaser}
               updateParty={updateParty}
               onGameComplete={() => {
                 setShowWeddingCard(true);
@@ -187,6 +226,39 @@ function App() {
                 text={dialogue.lines[dialogue.currentIndex]}
                 onComplete={advanceDialogue}
               />
+            ) : choices ? (
+              /* Beautiful retro choice selection UI in the bottom console! */
+              <div className="w-full h-full flex flex-col justify-center text-left select-none font-sans text-neutral-400">
+                <div className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-2 font-mono">
+                  {choices.title}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => {
+                      soundManager.playSFX('click');
+                      const callback = choices.callback;
+                      setChoices(null);
+                      callback('A');
+                    }}
+                    className="w-full text-left bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 hover:border-yellow-400 text-white text-[11px] font-mono px-3 py-1.5 cursor-pointer transition-colors retro-border-small"
+                  >
+                    A: {choices.optionA}
+                  </button>
+                  {choices.optionB && (
+                    <button
+                      onClick={() => {
+                        soundManager.playSFX('click');
+                        const callback = choices.callback;
+                        setChoices(null);
+                        callback('B');
+                      }}
+                      className="w-full text-left bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 hover:border-yellow-400 text-white text-[11px] font-mono px-3 py-1.5 cursor-pointer transition-colors retro-border-small"
+                    >
+                      B: {choices.optionB}
+                    </button>
+                  )}
+                </div>
+              </div>
             ) : (
               /* Beautiful retro dashboard status screen when there is no dialogue active */
               <div className="w-full h-full flex justify-between items-center text-left select-none font-sans text-neutral-400">

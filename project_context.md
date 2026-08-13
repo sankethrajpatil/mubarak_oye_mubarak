@@ -40,9 +40,14 @@ Because Sanketh is currently based in the US and missed Ryan's wedding, this web
 - **Vibe:** Retro 90s classroom arena.
 - **Mechanic:** Turn-based Pokémon battle (Ryan vs. Sanketh). Ryan must defeat Sanketh in a friendly duel. Upon defeat, Sanketh officially joins Ryan's party line-up.
 
-### Level 3: UVCE (The IEEE Boss Fight)
-- **Vibe:** Engineering college campus map.
-- **Mechanic:** Co-op boss fight. Ryan and Sanketh team up to battle the ultimate college boss: **IEEE**. They combine signature moves (*Grit Shield* + *Data Surge*) to claim victory.
+### Level 3: UVCE (The Core-Gargoyle Synergy Duel)
+- **Vibe:** Engineering college campus map (UVCE College Quad at twilight).
+- **Boss:** Core-Gargoyle (intimidating deadlines and brutal viva exams). Shaped like a gargoyle with glowing blue LED eyes, copper-coil wings, and an exposed circuit board chest plate that flashes yellow during attacks.
+- **Mechanic:** "Synergy Meter" Dual Battle.
+  - The team has a Synergy Meter starting at 0%.
+  - The battle alternates between a Boss Attack Phase and a Canteen Break / Rooftop Dialogue Phase.
+  - Correct conversational choices build the Synergy Meter.
+  - At 100%, the ultimate joint move "All-Nighter Overclock" triggers to defeat Core-Gargoyle.
 
 ### Level 4: SAP Labs & Kalyan Nagar (The Corporate & Refill Loop)
 - **Step A (SAP Boss Attempt 1):** Ryan and Sanketh battle the **Corporate Outage / Overtime Boss**. The party suffers an immediate, scripted wipeout. Text hint: *"Stamina too low! Go refresh at Kalyan Nagar!"*

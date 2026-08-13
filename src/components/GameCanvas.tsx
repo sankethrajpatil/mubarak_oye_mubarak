@@ -6,6 +6,7 @@ interface GameCanvasProps {
   currentScene: string;
   onSceneChange: (scene: string) => void;
   triggerDialogue: (speaker: string, avatar: string, lines: string[], onComplete: () => void) => void;
+  triggerChoices: (title: string, optionA: string, optionB: string, onSelect: (choice: 'A' | 'B') => void) => void;
   updateParty: (partyMember: string) => void;
   onGameComplete: () => void;
 }
@@ -14,6 +15,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   currentScene,
   onSceneChange,
   triggerDialogue,
+  triggerChoices,
   updateParty,
   onGameComplete,
 }) => {
@@ -22,6 +24,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   useEffect(() => {
     if (!gameRef.current) return;
+
+    // Destroy any existing global game instance to prevent duplicates during HMR/Strict Mode
+    if ((window as any).activePhaserGame) {
+      try {
+        (window as any).activePhaserGame.destroy(true);
+      } catch (e) {
+        console.error('Error destroying existing Phaser game:', e);
+      }
+      (window as any).activePhaserGame = null;
+    }
+
+    // Clear any previous canvas element
+    gameRef.current.innerHTML = '';
 
     // Config for Phaser Game
     const config: Phaser.Types.Core.GameConfig = {
@@ -47,10 +62,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     // Instantiate Phaser
     const game = new Phaser.Game(config);
     phaserGameRef.current = game;
+    (window as any).activePhaserGame = game;
 
     // Pass React callback references to game registry so Phaser can talk to React
     game.registry.set('onSceneChange', onSceneChange);
     game.registry.set('triggerDialogue', triggerDialogue);
+    game.registry.set('triggerChoices', triggerChoices);
     game.registry.set('updateParty', updateParty);
     game.registry.set('onGameComplete', onGameComplete);
     game.registry.set('currentSceneState', currentScene);
@@ -58,6 +75,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     return () => {
       game.destroy(true);
       phaserGameRef.current = null;
+      if ((window as any).activePhaserGame === game) {
+        (window as any).activePhaserGame = null;
+      }
     };
   }, []);
 
@@ -65,11 +85,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   useEffect(() => {
     if (phaserGameRef.current) {
       const activeScene = phaserGameRef.current.registry.get('currentSceneState');
+      console.log("[GameCanvas] Sync effect: activeScene =", activeScene, "currentScene =", currentScene);
       if (activeScene !== currentScene) {
         phaserGameRef.current.registry.set('currentSceneState', currentScene);
         
         // Let Phaser handle scene transitions dynamically
         const sceneManager = phaserGameRef.current.scene;
+        console.log("[GameCanvas] Transitioning scene to:", currentScene);
         if (currentScene === 'SCHOOL') {
           sceneManager.stop('BattleScene');
           sceneManager.stop('UVCEScene');
@@ -130,6 +152,7 @@ class BootScene extends Phaser.Scene {
     this.load.image('char_student_male', '/images/char_student_male.png');
     this.load.image('char_student_female', '/images/char_student_female.png');
     this.load.image('char_teacher', '/images/char_teacher.png');
+    this.load.image('char_boss_core_gargoyle', '/images/boss_core_gargoyle.jpg');
   }
 
   create() {
@@ -140,8 +163,16 @@ class BootScene extends Phaser.Scene {
     this.processCharacterTexture('char_student_male');
     this.processCharacterTexture('char_student_female');
     this.processCharacterTexture('char_teacher');
+    this.processCharacterTexture('char_boss_core_gargoyle');
 
-    const target = this.registry.get('currentSceneState') === 'BATTLE' ? 'BattleScene' : 'SchoolScene';
+    let target = 'SchoolScene';
+    const current = this.registry.get('currentSceneState');
+    console.log("[BootScene] currentSceneState =", current);
+    if (current === 'BATTLE') target = 'BattleScene';
+    else if (current === 'UVCE') target = 'UVCEScene';
+    else if (current === 'SAP') target = 'SAPScene';
+    else if (current === 'ENDING') target = 'EndingScene';
+    console.log("[BootScene] Starting target scene:", target);
     this.scene.start(target);
   }
 
@@ -709,9 +740,9 @@ class BattleScene extends Phaser.Scene {
       ease: 'Power2',
     });
 
-    // HP Box HUD - Player
-    this.add.rectangle(250, 525, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
-    this.add.text(140, 508, 'RYAN  Lv.24', {
+    // HP Box HUD - Player (Positioned at bottom-right above text box to prevent overlap)
+    this.add.rectangle(580, 440, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
+    this.add.text(470, 423, 'RYAN  Lv.24', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '11px',
       color: '#ffffff',
@@ -770,12 +801,12 @@ class BattleScene extends Phaser.Scene {
   private updateHpBars() {
     this.playerHpBar.clear();
     this.playerHpBar.fillStyle(0x4a5568, 1);
-    this.playerHpBar.fillRect(140, 530, 220, 10);
+    this.playerHpBar.fillRect(470, 445, 220, 10);
     
     const playerPct = Math.max(0, this.playerHp / this.playerMaxHp);
     const playerColor = playerPct > 0.5 ? 0x48bb78 : playerPct > 0.2 ? 0xecc94b : 0xf56565;
     this.playerHpBar.fillStyle(playerColor, 1);
-    this.playerHpBar.fillRect(140, 530, 220 * playerPct, 10);
+    this.playerHpBar.fillRect(470, 445, 220 * playerPct, 10);
 
     this.enemyHpBar.clear();
     this.enemyHpBar.fillStyle(0x4a5568, 1);
@@ -933,32 +964,47 @@ class UVCEScene extends Phaser.Scene {
   };
   private isLevelComplete = false;
 
-  // Co-op Battle variables
+  // Synergy Meter Dual Battle variables
   private inBattle = false;
-  private bossHp = 150;
-  private playerHp = 150;
-  private bossMaxHp = 150;
-  private playerMaxHp = 150;
+  private bossHp = 100;
+  private playerHp = 100;
+  private bossMaxHp = 100;
+  private playerMaxHp = 100;
+  private synergyMeter = 0;
+
   private bossSpriteInBattle!: Phaser.GameObjects.Image;
   private ryanSpriteInBattle!: Phaser.GameObjects.Image;
   private sankethSpriteInBattle!: Phaser.GameObjects.Image;
   private battleLogText!: Phaser.GameObjects.Text;
+  
   private playerHpBar!: Phaser.GameObjects.Graphics;
   private bossHpBar!: Phaser.GameObjects.Graphics;
-  private isTurnExecuting = false;
+  private synergyBar!: Phaser.GameObjects.Graphics;
+  private synergyText!: Phaser.GameObjects.Text;
+  
   private battleUIElements: Phaser.GameObjects.GameObject[] = [];
+  private choiceUIElements: Phaser.GameObjects.GameObject[] = [];
+  private vfxGraphics!: Phaser.GameObjects.Graphics;
+  private dimOverlay!: Phaser.GameObjects.Graphics;
+
+  private titleText!: Phaser.GameObjects.Text;
+  private instructionText!: Phaser.GameObjects.Text;
+  private introActive = false;
 
   constructor() {
     super('UVCEScene');
   }
 
   create() {
+    console.log("[UVCEScene] create() called!");
     this.isLevelComplete = false;
     this.inBattle = false;
-    this.isTurnExecuting = false;
-    this.bossHp = 150;
-    this.playerHp = 150;
+    this.introActive = true;
+    this.bossHp = 100;
+    this.playerHp = 100;
+    this.synergyMeter = 0;
     this.battleUIElements = [];
+    this.choiceUIElements = [];
 
     // Background
     const bg = this.add.image(400, 300, 'uvce_campus');
@@ -967,19 +1013,19 @@ class UVCEScene extends Phaser.Scene {
     soundManager.playBGM('school'); // upbeat campus overworld BGM
 
     // Overworld setup
-    this.add.text(400, 40, 'Level 3: UVCE Campus (The IEEE Era)', {
+    this.titleText = this.add.text(400, 40, 'Level 3: UVCE Quad (The Core-Gargoyle Duel)', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-      fontSize: '14px',
+      fontSize: '13px',
       color: '#ffffff',
     }).setOrigin(0.5).setStroke('#000000', 4);
 
-    this.add.text(400, 75, 'Walk up to the red glowing IEEE Boss and collide to battle!', {
+    this.instructionText = this.add.text(400, 75, 'Walk up to Core-Gargoyle to start the battle!', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '9px',
-      color: '#f6ad55',
+      color: '#63b3ed',
     }).setOrigin(0.5).setStroke('#000000', 4);
 
-    // Ryan overworld (size 115)
+    // Ryan overworld
     this.player = this.physics.add.sprite(150, 450, 'char_ryan_clean');
     const ryanRatio = this.player.width / this.player.height;
     this.player.setDisplaySize(115 * ryanRatio, 115);
@@ -990,19 +1036,18 @@ class UVCEScene extends Phaser.Scene {
     const sankethRatio = this.sankethSprite.width / this.sankethSprite.height;
     this.sankethSprite.setDisplaySize(115 * sankethRatio, 115);
 
-    // IEEE Boss - red glowing circular emblem
-    this.ieeeBoss = this.physics.add.image(620, 260, 'char_anam_clean'); // placeholder for boss sprite
-    this.ieeeBoss.setTint(0xff5555); // make red
+    // Core-Gargoyle Boss overworld setup
+    this.ieeeBoss = this.physics.add.image(620, 260, 'char_boss_core_gargoyle_clean');
     const bossRatio = this.ieeeBoss.width / this.ieeeBoss.height;
-    this.ieeeBoss.setDisplaySize(130 * bossRatio, 130);
+    this.ieeeBoss.setDisplaySize(140 * bossRatio, 140);
     this.ieeeBoss.setImmovable(true);
 
     // Pulsing effect on boss
     this.tweens.add({
       targets: this.ieeeBoss,
-      scaleX: this.ieeeBoss.scaleX * 1.1,
-      scaleY: this.ieeeBoss.scaleY * 1.1,
-      duration: 800,
+      scaleX: this.ieeeBoss.scaleX * 1.05,
+      scaleY: this.ieeeBoss.scaleY * 1.05,
+      duration: 1000,
       yoyo: true,
       repeat: -1
     });
@@ -1011,11 +1056,64 @@ class UVCEScene extends Phaser.Scene {
     this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as any;
 
     this.physics.add.collider(this.player, this.ieeeBoss, this.startIEEEBattle, undefined, this);
+
+    // Create persistent graphics layer for VFX
+    this.vfxGraphics = this.add.graphics();
+    this.vfxGraphics.setDepth(10);
+
+    // Trigger initial story context and instructions
+    this.time.delayedCall(500, () => {
+      const triggerDialogue = this.registry.get('triggerDialogue');
+      triggerDialogue(
+        'Sanketh',
+        '/images/Sanketh.png',
+        [
+          'Oh no, Ryan! Look at that massive shadow blocking the quad entrance... It\'s the Core-Gargoyle!',
+          'It represents all our incomplete assignments, pending lab records, and final project deadlines! My system is lagging, and my code won\'t compile. I\'m completely locked out! 😭'
+        ],
+        () => {
+          triggerDialogue(
+            'Ryan',
+            '/images/Rayan.png',
+            [
+              'Don\'t panic, Sanketh! We\'ve hacked through tougher problems than this. Remember the compiler error crawls and all-nighters? We\'ll defeat it together!',
+              'To beat the Core-Gargoyle, we need to build our Synergy Meter. As we face its stress, we\'ll sync up our choices. Aligning our minds will unlock our ultimate overclock!'
+            ],
+            () => {
+              triggerDialogue(
+                'Sanketh',
+                '/images/Sanketh.png',
+                [
+                  'You\'re right, let\'s do this! Let\'s walk up to it and show it what we\'ve got. I\'ll follow your lead!'
+                ],
+                () => {
+                  triggerDialogue(
+                    'System',
+                    '',
+                    [
+                      '💡 HOW TO PLAY:\n1. Use ARROWS / WASD to move Ryan on the map.\n2. Walk up to the Core-Gargoyle to initiate the battle.\n3. Make choice selections in the bottom console during breaks to build your Synergy.\n4. Defeat the gargoyle using your combined strength!'
+                    ],
+                    () => {
+                      this.introActive = false;
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    });
   }
 
   update() {
     if (this.isLevelComplete) return;
 
+    if (this.introActive) {
+      this.player.setVelocity(0, 0);
+      return;
+    }
+    
     if (!this.inBattle) {
       // Overworld controls
       let vx = 0;
@@ -1030,7 +1128,7 @@ class UVCEScene extends Phaser.Scene {
 
       this.player.setVelocity(vx, vy);
 
-      // Proportional hop walking
+      // Walking hop animation
       if (vx !== 0 || vy !== 0) {
         const time = this.time.now;
         const hop = Math.abs(Math.sin(time * 0.015)) * 0.12;
@@ -1054,119 +1152,141 @@ class UVCEScene extends Phaser.Scene {
     soundManager.stopBGM();
     soundManager.playSFX('exclamation');
 
-    // Fade to white and start battle layout
-    this.cameras.main.flash(300, 255, 255, 255, false, () => {
+    // Flash white, and transition after the flash completes (300ms)
+    this.cameras.main.flash(300, 255, 255, 255);
+    this.time.delayedCall(300, () => {
       soundManager.playBGM('battle');
       this.setupBattleUI();
+      this.startPhase1();
     });
   }
 
   private setupBattleUI() {
-    // Hide overworld assets
+    console.log("[UVCEScene] setupBattleUI() called!");
+    // Stop the pulsing overworld boss tween
+    this.tweens.killTweensOf(this.ieeeBoss);
+
+    // Hide/destroy overworld assets
     this.player.setVisible(false);
     this.sankethSprite.setVisible(false);
-    this.ieeeBoss.setVisible(false);
+    if (this.ieeeBoss) {
+      this.ieeeBoss.destroy();
+    }
+    if (this.titleText) {
+      this.titleText.destroy();
+    }
+    if (this.instructionText) {
+      this.instructionText.destroy();
+    }
 
-    // Battle platforms
+    // Battle platforms (depth: 0)
     const baseGraphics = this.add.graphics();
-    baseGraphics.fillStyle(0x4a5568, 0.4);
+    baseGraphics.fillStyle(0x38bdf8, 0.2); // Cyan theme for UVCE
     baseGraphics.fillEllipse(220, 460, 320, 80); // player side
     baseGraphics.fillEllipse(580, 250, 240, 60); // boss side
+    baseGraphics.setDepth(0);
     this.battleUIElements.push(baseGraphics);
 
-    // Ryan Battle sprite
+    // Dim overlay for dialogue breaks (depth: 1)
+    this.dimOverlay = this.add.graphics();
+    this.dimOverlay.fillStyle(0x0f172a, 0);
+    this.dimOverlay.fillRect(0, 0, 800, 600);
+    this.dimOverlay.setVisible(false);
+    this.dimOverlay.setDepth(1);
+    this.battleUIElements.push(this.dimOverlay);
+
+    // Ryan Battle sprite (depth: 2)
     this.ryanSpriteInBattle = this.add.image(180, 390, 'char_ryan_clean');
     const ryanRatio = this.ryanSpriteInBattle.width / this.ryanSpriteInBattle.height;
     this.ryanSpriteInBattle.setDisplaySize(180 * ryanRatio, 180);
+    this.ryanSpriteInBattle.setDepth(2);
     this.battleUIElements.push(this.ryanSpriteInBattle);
 
-    // Sanketh Battle sprite (standing next to Ryan)
+    // Sanketh Battle sprite (depth: 2)
     this.sankethSpriteInBattle = this.add.image(280, 400, 'char_sanketh_clean');
     const sankethRatio = this.sankethSpriteInBattle.width / this.sankethSpriteInBattle.height;
     this.sankethSpriteInBattle.setDisplaySize(180 * sankethRatio, 180);
+    this.sankethSpriteInBattle.setDepth(2);
     this.battleUIElements.push(this.sankethSpriteInBattle);
 
-    // IEEE Boss Battle sprite
-    this.bossSpriteInBattle = this.add.image(580, 200, 'char_anam_clean');
-    this.bossSpriteInBattle.setTint(0xff5555);
+    // Core-Gargoyle Boss Battle sprite (depth: 2)
+    this.bossSpriteInBattle = this.add.image(580, 200, 'char_boss_core_gargoyle_clean');
     const bossRatio = this.bossSpriteInBattle.width / this.bossSpriteInBattle.height;
-    this.bossSpriteInBattle.setDisplaySize(160 * bossRatio, 160);
+    this.bossSpriteInBattle.setDisplaySize(180 * bossRatio, 180);
+    this.bossSpriteInBattle.setDepth(2);
     this.battleUIElements.push(this.bossSpriteInBattle);
 
-    // Player HUD box
-    const hud1 = this.add.rectangle(250, 525, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
-    const text1 = this.add.text(140, 508, 'PARTY HP', {
+    // Player HUD box (depth: 3)
+    const hud1 = this.add.rectangle(580, 440, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
+    hud1.setDepth(3);
+    const text1 = this.add.text(470, 423, 'PARTY HP', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-      fontSize: '11px',
+      fontSize: '10px',
       color: '#ffffff',
     });
+    text1.setDepth(3);
     this.playerHpBar = this.add.graphics();
+    this.playerHpBar.setDepth(3);
     this.battleUIElements.push(hud1, text1, this.playerHpBar);
 
-    // Boss HUD box
+    // Boss HUD box (depth: 3)
     const hud2 = this.add.rectangle(580, 115, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
-    const text2 = this.add.text(470, 98, 'IEEE BOSS  Lv.50', {
+    hud2.setDepth(3);
+    const text2 = this.add.text(470, 98, 'CORE-GARGOYLE Lv.50', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-      fontSize: '11px',
-      color: '#ffffff',
+      fontSize: '10px',
+      color: '#f87171',
     });
+    text2.setDepth(3);
     this.bossHpBar = this.add.graphics();
+    this.bossHpBar.setDepth(3);
     this.battleUIElements.push(hud2, text2, this.bossHpBar);
 
-    this.updateHpBars();
+    // Synergy HUD box (depth: 3)
+    const hud3 = this.add.rectangle(400, 50, 300, 45, 0x1a202c, 0.85).setStrokeStyle(2, 0x38bdf8);
+    hud3.setDepth(3);
+    const text3 = this.add.text(400, 40, 'SYNERGY METER', {
+      fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
+      fontSize: '9px',
+      color: '#38bdf8',
+    }).setOrigin(0.5);
+    text3.setDepth(3);
+    this.synergyBar = this.add.graphics();
+    this.synergyBar.setDepth(3);
+    this.synergyText = this.add.text(400, 58, '0%', {
+      fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
+      fontSize: '9px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+    this.synergyText.setDepth(3);
+    this.battleUIElements.push(hud3, text3, this.synergyBar, this.synergyText);
 
-    // Text box bottom
+    // Text box bottom (depth: 3)
     const boxBg = this.add.rectangle(400, 540, 760, 80, 0x16171d, 0.9).setStrokeStyle(3, 0x4a5568);
-    this.battleLogText = this.add.text(50, 520, 'Co-Op Fight! Defeat IEEE Boss!', {
+    boxBg.setDepth(3);
+    this.battleLogText = this.add.text(50, 520, 'Core-Gargoyle blocks your path!', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '11px',
       color: '#ffffff',
       wordWrap: { width: 700 }
     });
+    this.battleLogText.setDepth(3);
     this.battleUIElements.push(boxBg, this.battleLogText);
 
-    // Co-op Battle Menu
-    this.createCoopBattleMenu();
+    this.updateHUD();
   }
 
-  private createCoopBattleMenu() {
-    const buttons = [
-      { text: 'Grit Shield (Ryan)', x: 180, y: 565, action: () => this.executeCoopTurn('shield') },
-      { text: 'Data Surge (Sanketh)', x: 400, y: 565, action: () => this.executeCoopTurn('surge') },
-      { text: 'Mubarak Beam', x: 620, y: 565, action: () => this.executeCoopTurn('beam') }
-    ];
-
-    buttons.forEach((btn) => {
-      const t = this.add.text(btn.x, btn.y, btn.text, {
-        fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-        fontSize: '9px',
-        color: '#63b3ed',
-        backgroundColor: '#2d3748',
-        padding: { x: 8, y: 5 }
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      this.battleUIElements.push(t);
-
-      t.on('pointerover', () => t.setColor('#ffffff'));
-      t.on('pointerout', () => t.setColor('#63b3ed'));
-      t.on('pointerdown', () => {
-        if (this.isLevelComplete || this.isTurnExecuting) return;
-        soundManager.playSFX('click');
-        btn.action();
-      });
-    });
-  }
-
-  private updateHpBars() {
-    // Player HP
+  private updateHUD() {
+    // Player HP Bar
     this.playerHpBar.clear();
     this.playerHpBar.fillStyle(0x4a5568, 1);
-    this.playerHpBar.fillRect(140, 530, 220, 10);
+    this.playerHpBar.fillRect(470, 445, 220, 10);
     const pPct = Math.max(0, this.playerHp / this.playerMaxHp);
     const pCol = pPct > 0.5 ? 0x48bb78 : pPct > 0.2 ? 0xecc94b : 0xf56565;
     this.playerHpBar.fillStyle(pCol, 1);
-    this.playerHpBar.fillRect(140, 530, 220 * pPct, 10);
+    this.playerHpBar.fillRect(470, 445, 220 * pPct, 10);
 
-    // Boss HP
+    // Boss HP Bar
     this.bossHpBar.clear();
     this.bossHpBar.fillStyle(0x4a5568, 1);
     this.bossHpBar.fillRect(470, 120, 220, 10);
@@ -1174,135 +1294,490 @@ class UVCEScene extends Phaser.Scene {
     const bCol = bPct > 0.5 ? 0x48bb78 : bPct > 0.2 ? 0xecc94b : 0xf56565;
     this.bossHpBar.fillStyle(bCol, 1);
     this.bossHpBar.fillRect(470, 120, 220 * bPct, 10);
+
+    // Synergy Meter Bar
+    this.synergyBar.clear();
+    this.synergyBar.fillStyle(0x334155, 1);
+    this.synergyBar.fillRect(270, 50, 260, 8);
+    const sPct = Math.min(1.0, this.synergyMeter / 100);
+    this.synergyBar.fillStyle(0x38bdf8, 1);
+    this.synergyBar.fillRect(270, 50, 260 * sPct, 8);
+    this.synergyText.setText(`${Math.round(this.synergyMeter)}%`);
   }
 
-  private executeCoopTurn(type: 'shield' | 'surge' | 'beam') {
-    this.isTurnExecuting = true;
-    let damage = 0;
-    let log = '';
-
-    if (type === 'shield') {
-      // heals player, hits for low damage
-      damage = 20;
-      this.playerHp = Math.min(this.playerMaxHp, this.playerHp + 40);
-      log = 'Ryan casts Grit Shield!\nParty recovers 40 HP and launches counter-charge!';
-    } else if (type === 'surge') {
-      damage = 45;
-      log = 'Sanketh casts Data Surge!\nCosmic code overload strikes IEEE Boss!';
-    } else if (type === 'beam') {
-      damage = 70;
-      log = 'Co-Op Combo! Mubarak Beam!\nPure unity energy shatters the engineering logic!';
-    }
-
-    this.battleLogText.setText(log);
-
-    // Attack anim
+  private animateSynergyGain(targetVal: number, callback?: () => void) {
     this.tweens.add({
-      targets: [this.ryanSpriteInBattle, this.sankethSpriteInBattle],
-      x: '+=20',
-      yoyo: true,
-      duration: 100,
+      targets: this,
+      synergyMeter: targetVal,
+      duration: 1000,
+      onUpdate: () => this.updateHUD(),
       onComplete: () => {
-        soundManager.playSFX('hit');
-        this.tweens.add({
-          targets: this.bossSpriteInBattle,
-          alpha: 0.2,
-          duration: 80,
-          yoyo: true,
-          repeat: 3,
-          onComplete: () => {
-            this.bossHp = Math.max(0, this.bossHp - damage);
-            this.updateHpBars();
-
-            if (this.bossHp <= 0) {
-              this.handleVictory();
-            } else {
-              this.time.delayedCall(1500, () => this.executeBossTurn());
-            }
-          }
-        });
+        soundManager.playSFX('victory'); // chime
+        if (callback) callback();
       }
     });
   }
 
-  private executeBossTurn() {
-    const attacks = [
-      { name: 'Paper Rejection', dmg: 25, log: 'IEEE Boss casts Research Paper Rejection!\nCritical academic despair inflicted!' },
-      { name: 'Logic Crash', dmg: 35, log: 'IEEE Boss casts Logic Crash!\nSystem memory leak compromises your team!' }
-    ];
+  // ==========================================
+  // PHASE 1: The Initial Encounter
+  // ==========================================
+  private startPhase1() {
+    this.time.delayedCall(1000, () => {
+      this.battleLogText.setText('Core-Gargoyle unleashes Git Merge Conflict!');
+      
+      // Boss attack animation: shake
+      this.tweens.add({
+        targets: this.bossSpriteInBattle,
+        x: '-=20',
+        yoyo: true,
+        duration: 80,
+        repeat: 5,
+        onComplete: () => {
+          soundManager.playSFX('hit');
+          
+          // Flash player sprites red
+          this.tweens.add({
+            targets: [this.ryanSpriteInBattle, this.sankethSpriteInBattle],
+            alpha: 0.3,
+            yoyo: true,
+            duration: 100,
+            repeat: 2,
+            onComplete: () => {
+              // Deal 30% damage to party
+              this.playerHp = 70;
+              this.updateHUD();
 
-    const move = attacks[Math.floor(Math.random() * attacks.length)];
-    this.battleLogText.setText(move.log);
-
-    this.tweens.add({
-      targets: this.bossSpriteInBattle,
-      x: '-=20',
-      yoyo: true,
-      duration: 100,
-      onComplete: () => {
-        soundManager.playSFX('hit');
-        this.tweens.add({
-          targets: [this.ryanSpriteInBattle, this.sankethSpriteInBattle],
-          alpha: 0.2,
-          duration: 80,
-          yoyo: true,
-          repeat: 3,
-          onComplete: () => {
-            this.playerHp = Math.max(0, this.playerHp - move.dmg);
-            this.updateHpBars();
-
-            if (this.playerHp <= 0) {
-              this.handleDefeat();
-            } else {
-              this.time.delayedCall(1200, () => {
-                this.battleLogText.setText('What will RYAN and SANKETH do?');
-                this.isTurnExecuting = false;
+              this.time.delayedCall(1000, () => {
+                const triggerDialogue = this.registry.get('triggerDialogue');
+                triggerDialogue(
+                  'Sanketh',
+                  '/images/Sanketh.png',
+                  [
+                    'Man, this IEEE Hackathon deadline is brutal... feels like we\'re fighting a literal gargoyle.'
+                  ],
+                  () => {
+                    triggerDialogue(
+                      'Ryan',
+                      '/images/Rayan.png',
+                      [
+                        'We didn\'t come all the way to UVCE to give up now. Let\'s talk strategy.'
+                      ],
+                      () => this.startPhase2()
+                    );
+                  }
+                );
               });
             }
-          }
-        });
-      }
+          });
+        }
+      });
     });
   }
 
-  private handleVictory() {
-    this.isLevelComplete = true;
-    soundManager.stopBGM();
-    soundManager.playSFX('victory');
-    this.battleLogText.setText('IEEE Boss has been defeated!');
+  // ==========================================
+  // PHASE 2: Canteen Break Dialogue #1
+  // ==========================================
+  private startPhase2() {
+    // Transition to quad rooftop dialogue layout
+    this.dimOverlay.clear();
+    this.dimOverlay.fillStyle(0x0f172a, 0.4);
+    this.dimOverlay.fillRect(0, 0, 800, 600);
+    this.dimOverlay.setVisible(true);
+    
+    // Hide boss
+    this.bossSpriteInBattle.setVisible(false);
 
+    // Move sprites together in the center facing each other
     this.tweens.add({
-      targets: this.bossSpriteInBattle,
-      scaleX: 0,
-      scaleY: 0,
-      angle: 180,
-      duration: 1000,
+      targets: this.ryanSpriteInBattle,
+      x: 340,
+      duration: 600,
+    });
+    this.tweens.add({
+      targets: this.sankethSpriteInBattle,
+      x: 460,
+      duration: 600,
       onComplete: () => {
+        // Trigger Sanketh conversation
         const triggerDialogue = this.registry.get('triggerDialogue');
         triggerDialogue(
           'Sanketh',
           '/images/Sanketh.png',
           [
-            'We did it, Ryan! That co-op attack grit + data broke their research block.',
-            'That is Level 3 complete. Now, we are entering the real corporate arena.',
-            'Let us head over to SAP Labs to face our next big boss battle!'
+            'Remember when we barely knew each other back in school and Aakash? Look at us now, hacking together at 2 AM.'
           ],
-          () => {
-            const onSceneChange = this.registry.get('onSceneChange');
-            onSceneChange('SAP');
-          }
+          () => this.showChoicePhase2()
         );
       }
     });
   }
 
-  private handleDefeat() {
-    soundManager.stopBGM();
-    soundManager.playSFX('defeat');
-    this.battleLogText.setText('Your party fainted...');
-    this.time.delayedCall(2000, () => {
-      this.scene.restart();
+  private showChoicePhase2() {
+    this.showChoices(
+      'From strangers in hallways to building core architecture together—we came a long way!',
+      'I\'m just here so we don\'t fail the lab exam!',
+      (choice) => {
+        const gain = choice === 'A' ? 35 : 20;
+        this.animateSynergyGain(gain, () => {
+          const triggerDialogue = this.registry.get('triggerDialogue');
+          triggerDialogue(
+            'System',
+            '',
+            ['Their shared history strengthens the party\'s focus!'],
+            () => this.startPhase3()
+          );
+        });
+      }
+    );
+  }
+
+  // ==========================================
+  // PHASE 3: Core-Gargoyle Strikes Back
+  // ==========================================
+  private startPhase3() {
+    // Restore battle scene
+    this.dimOverlay.setVisible(false);
+    this.bossSpriteInBattle.setVisible(true);
+
+    this.tweens.add({
+      targets: this.ryanSpriteInBattle,
+      x: 180,
+      duration: 600,
     });
+    this.tweens.add({
+      targets: this.sankethSpriteInBattle,
+      x: 280,
+      duration: 600,
+      onComplete: () => {
+        this.battleLogText.setText('Core-Gargoyle uses Surprise Lab Viva!');
+
+        // Boss attacks
+        this.tweens.add({
+          targets: this.bossSpriteInBattle,
+          x: '-=20',
+          yoyo: true,
+          duration: 80,
+          repeat: 3,
+          onComplete: () => {
+            // Sanketh slides forward to block
+            this.tweens.add({
+              targets: this.sankethSpriteInBattle,
+              x: 230,
+              duration: 200,
+              yoyo: true,
+              repeat: 1,
+              onComplete: () => {
+                // Play defensive sound and show Grit Shield effect
+                soundManager.playSFX('victory'); // block chime
+                this.drawShieldEffect();
+
+                this.time.delayedCall(1200, () => {
+                  this.vfxGraphics.clear();
+                  
+                  const triggerDialogue = this.registry.get('triggerDialogue');
+                  triggerDialogue(
+                    'Sanketh',
+                    '/images/Sanketh.png',
+                    [
+                      'I\'ll cover the defense! Ryan, what\'s our long-term plan after college?'
+                    ],
+                    () => this.startPhase4()
+                  );
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  private drawShieldEffect() {
+    this.vfxGraphics.clear();
+    // Draw expanding gold/blue shield arcs
+    this.vfxGraphics.lineStyle(4, 0x38bdf8, 0.8);
+    this.vfxGraphics.strokeCircle(200, 390, 80);
+    this.vfxGraphics.lineStyle(2, 0xfacc15, 0.6);
+    this.vfxGraphics.strokeCircle(200, 390, 95);
+    
+    // Add pulsing shield tween
+    this.tweens.add({
+      targets: this.vfxGraphics,
+      alpha: 0,
+      duration: 1000,
+    });
+  }
+
+  // ==========================================
+  // PHASE 4: Canteen Break Dialogue #2
+  // ==========================================
+  private startPhase4() {
+    // Hide boss
+    this.bossSpriteInBattle.setVisible(false);
+
+    // Dim background to dark starry night
+    this.dimOverlay.clear();
+    this.dimOverlay.fillStyle(0x020617, 0.85); // starry sky bg
+    this.dimOverlay.fillRect(0, 0, 800, 600);
+    this.dimOverlay.setVisible(true);
+
+    this.drawStarrySky();
+
+    // Move sprites closer
+    this.tweens.add({
+      targets: this.ryanSpriteInBattle,
+      x: 340,
+      duration: 600,
+    });
+    this.tweens.add({
+      targets: this.sankethSpriteInBattle,
+      x: 460,
+      duration: 600,
+      onComplete: () => {
+        // Removed tea cups to maintain visual style consistency
+
+        const triggerDialogue = this.registry.get('triggerDialogue');
+        triggerDialogue(
+          'Sanketh',
+          '/images/Sanketh.png',
+          [
+            'Seriously though... where do you see us in a few years? Think we\'ll actually make it in tech?'
+          ],
+          () => this.showChoicePhase4()
+        );
+      }
+    });
+  }
+
+  private drawStarrySky() {
+    const r = new Phaser.Math.RandomDataGenerator();
+    for (let i = 0; i < 40; i++) {
+      const x = r.between(20, 780);
+      const y = r.between(20, 400);
+      const size = r.between(1, 3);
+      const opacity = r.realInRange(0.4, 1.0);
+      this.dimOverlay.fillStyle(0xffffff, opacity);
+      this.dimOverlay.fillRect(x, y, size, size);
+    }
+  }
+
+  // Removed drawTeaCups implementation
+
+  private showChoicePhase4() {
+    this.showChoices(
+      'We\'re going to flourish. Big tech, big products, side projects—whatever comes next, we\'ll dominate it.',
+      'As long as there\'s good coffee and code, we\'ll figure it out.',
+      (choice) => {
+        const gain = choice === 'A' ? 35 : 25;
+        const targetVal = this.synergyMeter + gain;
+        this.animateSynergyGain(targetVal, () => {
+          const triggerDialogue = this.registry.get('triggerDialogue');
+          triggerDialogue(
+            'System',
+            '',
+            ['A shared vision for the future fuels the battle!'],
+            () => this.startPhase5()
+          );
+        });
+      }
+    );
+  }
+
+  // ==========================================
+  // PHASE 5: The Final Surge & All-Nighter Overclock
+  // ==========================================
+  private startPhase5() {
+    this.dimOverlay.setVisible(false);
+    this.vfxGraphics.clear();
+    this.bossSpriteInBattle.setVisible(true);
+
+    this.tweens.add({
+      targets: this.ryanSpriteInBattle,
+      x: 180,
+      duration: 600,
+    });
+    this.tweens.add({
+      targets: this.sankethSpriteInBattle,
+      x: 280,
+      duration: 600,
+      onComplete: () => {
+        this.bossSpriteInBattle.setTint(0xff5555); // red glow
+        this.battleLogText.setText('Core-Gargoyle enters Rage Mode and activates External Examiner Interrogation!');
+        
+        // Exposed chest board yellow flashes
+        this.tweens.add({
+          targets: this.bossSpriteInBattle,
+          tint: 0xfacc15,
+          duration: 150,
+          yoyo: true,
+          repeat: -1
+        });
+
+        this.time.delayedCall(1200, () => {
+          const triggerDialogue = this.registry.get('triggerDialogue');
+          triggerDialogue(
+            'Sanketh',
+            '/images/Sanketh.png',
+            [
+              'Synergy is maxing out! Time to combine our moves—Data Surge + Grit Shield!'
+            ],
+            () => this.showChoicePhase5()
+          );
+        });
+      }
+    });
+  }
+
+  private showChoicePhase5() {
+    this.showChoices(
+      'Execute \'All-Nighter Overclock\'!',
+      '',
+      () => {
+        this.animateSynergyGain(100, () => {
+          this.executeOverclockSequence();
+        });
+      }
+    );
+  }
+
+  private executeOverclockSequence() {
+    this.battleLogText.setText('Ryan and Sanketh execute All-Nighter Overclock!');
+    this.bossSpriteInBattle.setTint(0xff3333);
+
+    // Sprites float slightly
+    this.tweens.add({
+      targets: [this.ryanSpriteInBattle, this.sankethSpriteInBattle],
+      y: '-=30',
+      yoyo: true,
+      repeat: 1,
+      duration: 800,
+    });
+
+    let animationTimer = 0;
+    const interval = this.time.addEvent({
+      delay: 50,
+      callback: () => {
+        animationTimer += 50;
+        this.vfxGraphics.clear();
+        this.vfxGraphics.setAlpha(1.0);
+
+        // Lightning coordinates (Sanketh to center)
+        this.vfxGraphics.lineStyle(3, 0x38bdf8, 1.0);
+        this.vfxGraphics.beginPath();
+        let lx = 280;
+        let ly = 370;
+        const targetX = 430;
+        const targetY = 290;
+        
+        this.vfxGraphics.moveTo(lx, ly);
+        const steps = 4;
+        for (let s = 1; s <= steps; s++) {
+          const px = lx + (targetX - lx) * (s / steps) + Phaser.Math.Between(-15, 15);
+          const py = ly + (targetY - ly) * (s / steps) + Phaser.Math.Between(-15, 15);
+          this.vfxGraphics.lineTo(px, py);
+        }
+        this.vfxGraphics.strokePath();
+
+        // Gold beam coordinates (Ryan to center)
+        this.vfxGraphics.lineStyle(6, 0xfacc15, 0.9);
+        this.vfxGraphics.beginPath();
+        this.vfxGraphics.moveTo(180, 360);
+        this.vfxGraphics.lineTo(targetX, targetY);
+        this.vfxGraphics.strokePath();
+        
+        this.vfxGraphics.lineStyle(2, 0xffffff, 1.0);
+        this.vfxGraphics.beginPath();
+        this.vfxGraphics.moveTo(180, 360);
+        this.vfxGraphics.lineTo(targetX, targetY);
+        this.vfxGraphics.strokePath();
+
+        if (animationTimer >= 1000) {
+          interval.destroy();
+          this.executeCombinedBurst();
+        }
+      },
+      callbackScope: this,
+      loop: true
+    });
+
+    soundManager.playSFX('text'); // Static sound
+  }
+
+  private executeCombinedBurst() {
+    this.tweens.killTweensOf(this.bossSpriteInBattle);
+    this.vfxGraphics.clear();
+    
+    soundManager.playSFX('hit');
+    this.cameras.main.shake(600, 0.025);
+
+    const burstCircle = this.add.circle(430, 290, 10, 0xffffff);
+    this.tweens.add({
+      targets: burstCircle,
+      radius: 200,
+      alpha: 0,
+      duration: 600,
+      onComplete: () => burstCircle.destroy()
+    });
+
+    this.tweens.add({
+      targets: this.bossSpriteInBattle,
+      x: '+=30',
+      yoyo: true,
+      duration: 50,
+      repeat: 8,
+      onComplete: () => {
+        this.bossHp = 0;
+        this.updateHUD();
+
+        // Spin, shrink, shatter
+        this.tweens.add({
+          targets: this.bossSpriteInBattle,
+          scaleX: 0,
+          scaleY: 0,
+          angle: 720,
+          alpha: 0,
+          duration: 1200,
+          onComplete: () => {
+            soundManager.playSFX('victory');
+            this.battleLogText.setText('Core-Gargoyle was debugged and defeated! Level 3 cleared!');
+
+            this.time.delayedCall(2000, () => {
+              const triggerDialogue = this.registry.get('triggerDialogue');
+              triggerDialogue(
+                'Sanketh',
+                '/images/Sanketh.png',
+                [
+                  'We did it, Ryan! That overclock fully debugged their deadlines and exams.',
+                  'That is Level 3 complete. Now, we are entering the real corporate arena.',
+                  'Let us head over to SAP Labs to face our next big boss battle!'
+                ],
+                () => {
+                  const onSceneChange = this.registry.get('onSceneChange');
+                  onSceneChange('SAP');
+                }
+              );
+            });
+          }
+        });
+      }
+    });
+  }
+
+  // ==========================================
+  // HELPER: Interactive Choice Box Renderer
+  // ==========================================
+  private showChoices(
+    optionAText: string,
+    optionBText: string,
+    onSelect: (choice: 'A' | 'B') => void
+  ) {
+    const triggerChoices = this.registry.get('triggerChoices');
+    triggerChoices(
+      "CHOOSE RYAN'S RESPONSE:",
+      optionAText,
+      optionBText,
+      onSelect
+    );
   }
 }
 
@@ -1550,7 +2025,8 @@ class SAPScene extends Phaser.Scene {
       // Real Final Fight!
       this.inBattle = true;
       soundManager.stopBGM();
-      this.cameras.main.flash(300, 255, 255, 255, false, () => {
+      this.cameras.main.flash(300, 255, 255, 255);
+      this.time.delayedCall(300, () => {
         soundManager.playBGM('battle');
         this.setupFinalBattleUI();
       });
@@ -1672,9 +2148,9 @@ class SAPScene extends Phaser.Scene {
     this.bossSpriteInBattle.setDisplaySize(150 * bossRatio, 150);
     this.battleUIElements.push(this.bossSpriteInBattle);
 
-    // Player HUD
-    const hud1 = this.add.rectangle(250, 525, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
-    const text1 = this.add.text(140, 508, 'PARTY HP', {
+    // Player HUD (Positioned at bottom-right above text box to prevent overlap)
+    const hud1 = this.add.rectangle(580, 440, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
+    const text1 = this.add.text(470, 423, 'PARTY HP', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '11px',
       color: '#ffffff',
@@ -1738,11 +2214,11 @@ class SAPScene extends Phaser.Scene {
     // Player HP
     this.playerHpBar.clear();
     this.playerHpBar.fillStyle(0x4a5568, 1);
-    this.playerHpBar.fillRect(140, 530, 220, 10);
+    this.playerHpBar.fillRect(470, 445, 220, 10);
     const pPct = Math.max(0, this.playerHp / this.playerMaxHp);
     const pCol = pPct > 0.5 ? 0x48bb78 : pPct > 0.2 ? 0xecc94b : 0xf56565;
     this.playerHpBar.fillStyle(pCol, 1);
-    this.playerHpBar.fillRect(140, 530, 220 * pPct, 10);
+    this.playerHpBar.fillRect(470, 445, 220 * pPct, 10);
 
     // Boss HP
     this.bossHpBar.clear();
