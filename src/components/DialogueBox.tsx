@@ -61,7 +61,7 @@ export const DialogueBox: React.FC<DialogueBoxProps> = ({
   // Map speaker names to retro color classes
   const getSpeakerColor = (name: string) => {
     switch (name.toLowerCase()) {
-      case 'ryan':
+      case 'rayan':
         return 'text-blue-400';
       case 'sanketh':
         return 'text-purple-400';

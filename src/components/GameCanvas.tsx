@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+﻿import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { soundManager } from '../utils/sound';
 
@@ -9,6 +9,7 @@ interface GameCanvasProps {
   triggerChoices: (title: string, optionA: string, optionB: string, onSelect: (choice: 'A' | 'B') => void) => void;
   updateParty: (partyMember: string) => void;
   onGameComplete: () => void;
+  onShowEndScreen: () => void;
 }
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({
@@ -18,6 +19,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   triggerChoices,
   updateParty,
   onGameComplete,
+  onShowEndScreen,
 }) => {
   const gameRef = useRef<HTMLDivElement>(null);
   const phaserGameRef = useRef<Phaser.Game | null>(null);
@@ -70,6 +72,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     game.registry.set('triggerChoices', triggerChoices);
     game.registry.set('updateParty', updateParty);
     game.registry.set('onGameComplete', onGameComplete);
+    game.registry.set('onShowEndScreen', onShowEndScreen);
     game.registry.set('currentSceneState', currentScene);
 
     return () => {
@@ -146,24 +149,26 @@ class BootScene extends Phaser.Scene {
     this.load.image('sunset_crossroads', '/images/bg_sunset_crossroads.png');
 
     // Load Character Sprite files
-    this.load.image('char_ryan', '/images/Rayan.png');
+    this.load.image('char_rayan', '/images/Rayan.png');
     this.load.image('char_sanketh', '/images/Sanketh.png');
     this.load.image('char_anam', '/images/Anam.png');
     this.load.image('char_student_male', '/images/char_student_male.png');
     this.load.image('char_student_female', '/images/char_student_female.png');
     this.load.image('char_teacher', '/images/char_teacher.png');
     this.load.image('char_boss_core_gargoyle', '/images/boss_core_gargoyle.jpg');
+    this.load.image('char_boss_corporate_burnout_hydra', '/images/boss_corporate_burnout_hydra.jpg');
   }
 
   create() {
     // Process character textures to remove white background and crop whitespace
-    this.processCharacterTexture('char_ryan');
+    this.processCharacterTexture('char_rayan');
     this.processCharacterTexture('char_sanketh');
     this.processCharacterTexture('char_anam');
     this.processCharacterTexture('char_student_male');
     this.processCharacterTexture('char_student_female');
     this.processCharacterTexture('char_teacher');
     this.processCharacterTexture('char_boss_core_gargoyle');
+    this.processCharacterTexture('char_boss_corporate_burnout_hydra');
 
     let target = 'SchoolScene';
     const current = this.registry.get('currentSceneState');
@@ -361,10 +366,10 @@ class SchoolScene extends Phaser.Scene {
       color: '#f6ad55',
     }).setOrigin(0.5).setStroke('#000000', 4);
 
-    // Player (Ryan Token) - spawn bottom-left
-    this.player = this.physics.add.sprite(80, 450, 'char_ryan_clean');
-    const ryanRatio = this.player.width / this.player.height;
-    this.player.setDisplaySize(115 * ryanRatio, 115);
+    // Player (Rayan Token) - spawn bottom-left
+    this.player = this.physics.add.sprite(80, 450, 'char_rayan_clean');
+    const rayanRatio = this.player.width / this.player.height;
+    this.player.setDisplaySize(115 * rayanRatio, 115);
     this.player.setCollideWorldBounds(true);
 
     // Alert exclamation mark
@@ -535,7 +540,7 @@ class SchoolScene extends Phaser.Scene {
           spottedBy,
           `/images/char_student_${spottedBy === 'Simran' ? 'female' : 'male'}.png`,
           [
-            `Hey Ryan! No running in the corridor!`,
+            `Hey Rayan! No running in the corridor!`,
             `Locking eyes means you have to start this path again!`
           ],
           () => {}
@@ -565,7 +570,7 @@ class SchoolScene extends Phaser.Scene {
           'Sanketh',
           '/images/Sanketh.png',
           [
-            'Hey Ryan! Ready for our final exam?',
+            'Hey Rayan! Ready for our final exam?',
             'Wait... did you get your Hall Ticket? You cannot enter the classroom without it!',
             'Oh no! You forgot it?',
             'I think Mary Geraldine (our teacher) is holding it at the registration table on the far left!',
@@ -654,7 +659,7 @@ class SchoolScene extends Phaser.Scene {
         'Mary Geraldine',
         '/images/char_teacher.png',
         [
-          'Ah, Ryan Sailani! Here is your Hall Ticket.',
+          'Ah, Rayan Sailani! Here is your Hall Ticket.',
           'Please do not lose it this time! Hurry, the exam gates are closing soon.',
           'Head back to Sanketh at the door!'
         ],
@@ -682,7 +687,7 @@ class SchoolScene extends Phaser.Scene {
 // 3. BATTLE SCENE (LEVEL 2: CLASSROOM)
 // ==========================================
 class BattleScene extends Phaser.Scene {
-  private ryanBattleSprite!: Phaser.GameObjects.Image;
+  private rayanBattleSprite!: Phaser.GameObjects.Image;
   private sankethBattleSprite!: Phaser.GameObjects.Image;
   private battleLogText!: Phaser.GameObjects.Text;
   
@@ -719,12 +724,12 @@ class BattleScene extends Phaser.Scene {
     graphics.fillEllipse(250, 450, 300, 80);
     graphics.fillEllipse(580, 250, 240, 60);
 
-    // Characters sized nicely (Ryan back, Sanketh front)
-    this.ryanBattleSprite = this.add.image(-150, 380, 'char_ryan_clean');
-    const ryanRatio = this.ryanBattleSprite.width / this.ryanBattleSprite.height;
-    this.ryanBattleSprite.setDisplaySize(200 * ryanRatio, 200);
+    // Characters sized nicely (Rayan back, Sanketh front)
+    this.rayanBattleSprite = this.add.image(-150, 380, 'char_rayan_clean');
+    const rayanRatio = this.rayanBattleSprite.width / this.rayanBattleSprite.height;
+    this.rayanBattleSprite.setDisplaySize(200 * rayanRatio, 200);
     this.tweens.add({
-      targets: this.ryanBattleSprite,
+      targets: this.rayanBattleSprite,
       x: 250,
       duration: 800,
       ease: 'Power2',
@@ -742,7 +747,7 @@ class BattleScene extends Phaser.Scene {
 
     // HP Box HUD - Player (Positioned at bottom-right above text box to prevent overlap)
     this.add.rectangle(580, 440, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
-    this.add.text(470, 423, 'RYAN  Lv.24', {
+    this.add.text(470, 423, 'RAYAN  Lv.24', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '11px',
       color: '#ffffff',
@@ -762,7 +767,7 @@ class BattleScene extends Phaser.Scene {
 
     // Text box bottom
     this.add.rectangle(400, 540, 760, 80, 0x16171d, 0.9).setStrokeStyle(3, 0x4a5568);
-    this.battleLogText = this.add.text(50, 520, 'What will RYAN do?', {
+    this.battleLogText = this.add.text(50, 520, 'What will RAYAN do?', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '11px',
       color: '#ffffff',
@@ -825,20 +830,20 @@ class BattleScene extends Phaser.Scene {
 
     if (attackType === 'jibe') {
       damage = 25;
-      logMsg = 'Ryan uses Sarcastic Jibe!\nIt is super effective!';
+      logMsg = 'Rayan uses Sarcastic Jibe!\nIt is super effective!';
     } else if (attackType === 'blast') {
       damage = 35;
-      logMsg = 'Ryan conjures a Nostalgia Blast!\nOld memories deal solid emotional damage!';
+      logMsg = 'Rayan conjures a Nostalgia Blast!\nOld memories deal solid emotional damage!';
     } else if (attackType === 'beam') {
       damage = 60;
-      logMsg = 'Ryan unleashes the Mubarak Beam!\nPure wedding energy engulfs the classroom!';
+      logMsg = 'Rayan unleashes the Mubarak Beam!\nPure wedding energy engulfs the classroom!';
     }
 
     this.battleLogText.setText(logMsg);
 
     this.tweens.add({
-      targets: this.ryanBattleSprite,
-      x: this.ryanBattleSprite.x + 20,
+      targets: this.rayanBattleSprite,
+      x: this.rayanBattleSprite.x + 20,
       yoyo: true,
       duration: 100,
       onComplete: () => {
@@ -881,7 +886,7 @@ class BattleScene extends Phaser.Scene {
       onComplete: () => {
         soundManager.playSFX('hit');
         this.tweens.add({
-          targets: this.ryanBattleSprite,
+          targets: this.rayanBattleSprite,
           alpha: 0.1,
           duration: 80,
           yoyo: true,
@@ -894,7 +899,7 @@ class BattleScene extends Phaser.Scene {
               this.handleDefeat();
             } else {
               this.time.delayedCall(1200, () => {
-                this.battleLogText.setText('What will RYAN do?');
+                this.battleLogText.setText('What will RAYAN do?');
                 this.isTurnExecuting = false;
               });
             }
@@ -941,7 +946,7 @@ class BattleScene extends Phaser.Scene {
     this.isBattleOver = true;
     soundManager.stopBGM();
     soundManager.playSFX('defeat');
-    this.battleLogText.setText('Ryan collapsed...!');
+    this.battleLogText.setText('Rayan collapsed...!');
     this.time.delayedCall(2000, () => {
       this.scene.restart();
     });
@@ -973,7 +978,7 @@ class UVCEScene extends Phaser.Scene {
   private synergyMeter = 0;
 
   private bossSpriteInBattle!: Phaser.GameObjects.Image;
-  private ryanSpriteInBattle!: Phaser.GameObjects.Image;
+  private rayanSpriteInBattle!: Phaser.GameObjects.Image;
   private sankethSpriteInBattle!: Phaser.GameObjects.Image;
   private battleLogText!: Phaser.GameObjects.Text;
   
@@ -1025,13 +1030,13 @@ class UVCEScene extends Phaser.Scene {
       color: '#63b3ed',
     }).setOrigin(0.5).setStroke('#000000', 4);
 
-    // Ryan overworld
-    this.player = this.physics.add.sprite(150, 450, 'char_ryan_clean');
-    const ryanRatio = this.player.width / this.player.height;
-    this.player.setDisplaySize(115 * ryanRatio, 115);
+    // Rayan overworld
+    this.player = this.physics.add.sprite(150, 450, 'char_rayan_clean');
+    const rayanRatio = this.player.width / this.player.height;
+    this.player.setDisplaySize(115 * rayanRatio, 115);
     this.player.setCollideWorldBounds(true);
 
-    // Sanketh follows Ryan on map
+    // Sanketh follows Rayan on map
     this.sankethSprite = this.add.image(100, 470, 'char_sanketh_clean');
     const sankethRatio = this.sankethSprite.width / this.sankethSprite.height;
     this.sankethSprite.setDisplaySize(115 * sankethRatio, 115);
@@ -1068,12 +1073,12 @@ class UVCEScene extends Phaser.Scene {
         'Sanketh',
         '/images/Sanketh.png',
         [
-          'Oh no, Ryan! Look at that massive shadow blocking the quad entrance... It\'s the Core-Gargoyle!',
-          'It represents all our incomplete assignments, pending lab records, and final project deadlines! My system is lagging, and my code won\'t compile. I\'m completely locked out! 😭'
+          'Oh no, Rayan! Look at that massive shadow blocking the quad entrance... It\'s the Core-Gargoyle!',
+          'It represents all our incomplete assignments, pending lab records, and final project deadlines! My system is lagging, and my code won\'t compile. I\'m completely locked out! ðŸ˜­'
         ],
         () => {
           triggerDialogue(
-            'Ryan',
+            'Rayan',
             '/images/Rayan.png',
             [
               'Don\'t panic, Sanketh! We\'ve hacked through tougher problems than this. Remember the compiler error crawls and all-nighters? We\'ll defeat it together!',
@@ -1091,7 +1096,7 @@ class UVCEScene extends Phaser.Scene {
                     'System',
                     '',
                     [
-                      '💡 HOW TO PLAY:\n1. Use ARROWS / WASD to move Ryan on the map.\n2. Walk up to the Core-Gargoyle to initiate the battle.\n3. Make choice selections in the bottom console during breaks to build your Synergy.\n4. Defeat the gargoyle using your combined strength!'
+                      'ðŸ’¡ HOW TO PLAY:\n1. Use ARROWS / WASD to move Rayan on the map.\n2. Walk up to the Core-Gargoyle to initiate the battle.\n3. Make choice selections in the bottom console during breaks to build your Synergy.\n4. Defeat the gargoyle using your combined strength!'
                     ],
                     () => {
                       this.introActive = false;
@@ -1195,12 +1200,12 @@ class UVCEScene extends Phaser.Scene {
     this.dimOverlay.setDepth(1);
     this.battleUIElements.push(this.dimOverlay);
 
-    // Ryan Battle sprite (depth: 2)
-    this.ryanSpriteInBattle = this.add.image(180, 390, 'char_ryan_clean');
-    const ryanRatio = this.ryanSpriteInBattle.width / this.ryanSpriteInBattle.height;
-    this.ryanSpriteInBattle.setDisplaySize(180 * ryanRatio, 180);
-    this.ryanSpriteInBattle.setDepth(2);
-    this.battleUIElements.push(this.ryanSpriteInBattle);
+    // Rayan Battle sprite (depth: 2)
+    this.rayanSpriteInBattle = this.add.image(180, 390, 'char_rayan_clean');
+    const rayanRatio = this.rayanSpriteInBattle.width / this.rayanSpriteInBattle.height;
+    this.rayanSpriteInBattle.setDisplaySize(180 * rayanRatio, 180);
+    this.rayanSpriteInBattle.setDepth(2);
+    this.battleUIElements.push(this.rayanSpriteInBattle);
 
     // Sanketh Battle sprite (depth: 2)
     this.sankethSpriteInBattle = this.add.image(280, 400, 'char_sanketh_clean');
@@ -1337,7 +1342,7 @@ class UVCEScene extends Phaser.Scene {
           
           // Flash player sprites red
           this.tweens.add({
-            targets: [this.ryanSpriteInBattle, this.sankethSpriteInBattle],
+            targets: [this.rayanSpriteInBattle, this.sankethSpriteInBattle],
             alpha: 0.3,
             yoyo: true,
             duration: 100,
@@ -1357,7 +1362,7 @@ class UVCEScene extends Phaser.Scene {
                   ],
                   () => {
                     triggerDialogue(
-                      'Ryan',
+                      'Rayan',
                       '/images/Rayan.png',
                       [
                         'We didn\'t come all the way to UVCE to give up now. Let\'s talk strategy.'
@@ -1389,7 +1394,7 @@ class UVCEScene extends Phaser.Scene {
 
     // Move sprites together in the center facing each other
     this.tweens.add({
-      targets: this.ryanSpriteInBattle,
+      targets: this.rayanSpriteInBattle,
       x: 340,
       duration: 600,
     });
@@ -1414,7 +1419,7 @@ class UVCEScene extends Phaser.Scene {
 
   private showChoicePhase2() {
     this.showChoices(
-      'From strangers in hallways to building core architecture together—we came a long way!',
+      'From strangers in hallways to building core architecture togetherâ€”we came a long way!',
       'I\'m just here so we don\'t fail the lab exam!',
       (choice) => {
         const gain = choice === 'A' ? 35 : 20;
@@ -1440,7 +1445,7 @@ class UVCEScene extends Phaser.Scene {
     this.bossSpriteInBattle.setVisible(true);
 
     this.tweens.add({
-      targets: this.ryanSpriteInBattle,
+      targets: this.rayanSpriteInBattle,
       x: 180,
       duration: 600,
     });
@@ -1479,7 +1484,7 @@ class UVCEScene extends Phaser.Scene {
                     'Sanketh',
                     '/images/Sanketh.png',
                     [
-                      'I\'ll cover the defense! Ryan, what\'s our long-term plan after college?'
+                      'I\'ll cover the defense! Rayan, what\'s our long-term plan after college?'
                     ],
                     () => this.startPhase4()
                   );
@@ -1525,7 +1530,7 @@ class UVCEScene extends Phaser.Scene {
 
     // Move sprites closer
     this.tweens.add({
-      targets: this.ryanSpriteInBattle,
+      targets: this.rayanSpriteInBattle,
       x: 340,
       duration: 600,
     });
@@ -1565,7 +1570,7 @@ class UVCEScene extends Phaser.Scene {
 
   private showChoicePhase4() {
     this.showChoices(
-      'We\'re going to flourish. Big tech, big products, side projects—whatever comes next, we\'ll dominate it.',
+      'We\'re going to flourish. Big tech, big products, side projectsâ€”whatever comes next, we\'ll dominate it.',
       'As long as there\'s good coffee and code, we\'ll figure it out.',
       (choice) => {
         const gain = choice === 'A' ? 35 : 25;
@@ -1592,7 +1597,7 @@ class UVCEScene extends Phaser.Scene {
     this.bossSpriteInBattle.setVisible(true);
 
     this.tweens.add({
-      targets: this.ryanSpriteInBattle,
+      targets: this.rayanSpriteInBattle,
       x: 180,
       duration: 600,
     });
@@ -1619,7 +1624,7 @@ class UVCEScene extends Phaser.Scene {
             'Sanketh',
             '/images/Sanketh.png',
             [
-              'Synergy is maxing out! Time to combine our moves—Data Surge + Grit Shield!'
+              'Synergy is maxing out! Time to combine our movesâ€”Data Surge + Grit Shield!'
             ],
             () => this.showChoicePhase5()
           );
@@ -1641,12 +1646,12 @@ class UVCEScene extends Phaser.Scene {
   }
 
   private executeOverclockSequence() {
-    this.battleLogText.setText('Ryan and Sanketh execute All-Nighter Overclock!');
+    this.battleLogText.setText('Rayan and Sanketh execute All-Nighter Overclock!');
     this.bossSpriteInBattle.setTint(0xff3333);
 
     // Sprites float slightly
     this.tweens.add({
-      targets: [this.ryanSpriteInBattle, this.sankethSpriteInBattle],
+      targets: [this.rayanSpriteInBattle, this.sankethSpriteInBattle],
       y: '-=30',
       yoyo: true,
       repeat: 1,
@@ -1678,7 +1683,7 @@ class UVCEScene extends Phaser.Scene {
         }
         this.vfxGraphics.strokePath();
 
-        // Gold beam coordinates (Ryan to center)
+        // Gold beam coordinates (Rayan to center)
         this.vfxGraphics.lineStyle(6, 0xfacc15, 0.9);
         this.vfxGraphics.beginPath();
         this.vfxGraphics.moveTo(180, 360);
@@ -1747,7 +1752,7 @@ class UVCEScene extends Phaser.Scene {
                 'Sanketh',
                 '/images/Sanketh.png',
                 [
-                  'We did it, Ryan! That overclock fully debugged their deadlines and exams.',
+                  'We did it, Rayan! That overclock fully debugged their deadlines and exams.',
                   'That is Level 3 complete. Now, we are entering the real corporate arena.',
                   'Let us head over to SAP Labs to face our next big boss battle!'
                 ],
@@ -1773,7 +1778,7 @@ class UVCEScene extends Phaser.Scene {
   ) {
     const triggerChoices = this.registry.get('triggerChoices');
     triggerChoices(
-      "CHOOSE RYAN'S RESPONSE:",
+      "CHOOSE RAYAN'S RESPONSE:",
       optionAText,
       optionBText,
       onSelect
@@ -1787,9 +1792,8 @@ class UVCEScene extends Phaser.Scene {
 class SAPScene extends Phaser.Scene {
   private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
   private sankethSprite!: Phaser.GameObjects.Image;
-  private anamSprite!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
+  private anamSprite!: Phaser.GameObjects.Sprite;
   private sapBoss!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
-  private barista!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
@@ -1800,10 +1804,11 @@ class SAPScene extends Phaser.Scene {
   };
 
   // Progression Flags
-  private staminaRestored = false;
-  private anamRecruited = false;
+  private currentStage: 'SAP_DEFEAT' | 'KALYAN_NAGAR' | 'REM_SAP' = 'SAP_DEFEAT';
+  private polaroidsCollected = 0;
   private shieldBroken = false;
   private isLevelComplete = false;
+  private introActive = false;
 
   // Battle variables
   private inBattle = false;
@@ -1815,7 +1820,7 @@ class SAPScene extends Phaser.Scene {
 
   // Battle visual sprites
   private bossSpriteInBattle!: Phaser.GameObjects.Image;
-  private ryanSpriteInBattle!: Phaser.GameObjects.Image;
+  private rayanSpriteInBattle!: Phaser.GameObjects.Image;
   private sankethSpriteInBattle!: Phaser.GameObjects.Image;
   private anamSpriteInBattle!: Phaser.GameObjects.Image;
   private battleLogText!: Phaser.GameObjects.Text;
@@ -1824,18 +1829,29 @@ class SAPScene extends Phaser.Scene {
   
   private overworldUIElements: any[] = [];
   private battleUIElements: any[] = [];
+  private vfxGraphics!: Phaser.GameObjects.Graphics;
+  private dimOverlay!: Phaser.GameObjects.Graphics;
+
+  private rainDrops: { x: number; y: number; speed: number }[] = [];
+  private polaroidObjects: any[] = [];
+  private tableZone: any = null;
+  private tableIndicatorText: Phaser.GameObjects.Text | null = null;
+  
+  private qteActive = false;
 
   constructor() {
     super('SAPScene');
   }
 
   create() {
-    this.staminaRestored = false;
-    this.anamRecruited = false;
+    this.currentStage = 'SAP_DEFEAT';
+    this.polaroidsCollected = 0;
     this.shieldBroken = false;
     this.isLevelComplete = false;
     this.inBattle = false;
     this.isTurnExecuting = false;
+    this.qteActive = false;
+    this.introActive = false;
     
     this.overworldUIElements = [];
     this.battleUIElements = [];
@@ -1843,11 +1859,31 @@ class SAPScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as any;
 
+    this.vfxGraphics = this.add.graphics();
+    this.vfxGraphics.setDepth(10);
+
+    this.dimOverlay = this.add.graphics();
+    this.dimOverlay.setDepth(1);
+
+    // QTE Sync listeners
+    this.input.keyboard!.on('keydown-SPACE', (event: KeyboardEvent) => {
+      if (this.qteActive) {
+        event.preventDefault();
+        this.executeQTE();
+      }
+    });
+
+    this.input.on('pointerdown', () => {
+      if (this.qteActive) {
+        this.executeQTE();
+      }
+    });
+
     this.loadSAPLocation();
   }
 
   private loadSAPLocation() {
-    // Clear previous visual items
+    this.inBattle = false;
     this.overworldUIElements.forEach(el => el.destroy());
     this.overworldUIElements = [];
 
@@ -1858,17 +1894,24 @@ class SAPScene extends Phaser.Scene {
 
     soundManager.playBGM('battle'); // office background uses driving sound
 
-    const title = this.add.text(400, 40, 'Level 4: SAP Labs Office Lobby', {
+    const title = this.add.text(400, 40, 'Level 4: SAP Labs Campus', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '14px',
       color: '#ffffff',
     }).setOrigin(0.5).setStroke('#000000', 4);
     this.overworldUIElements.push(title);
 
-    // Ryan overworld
-    this.player = this.physics.add.sprite(150, 450, 'char_ryan_clean');
-    const ryanRatio = this.player.width / this.player.height;
-    this.player.setDisplaySize(115 * ryanRatio, 115);
+    const help = this.add.text(400, 75, 'Walk up to the Corporate Burnout Hydra!', {
+      fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
+      fontSize: '9px',
+      color: '#cbd5e1',
+    }).setOrigin(0.5).setStroke('#000000', 4);
+    this.overworldUIElements.push(help);
+
+    // Rayan overworld
+    this.player = this.physics.add.sprite(150, 450, 'char_rayan_clean');
+    const rayanRatio = this.player.width / this.player.height;
+    this.player.setDisplaySize(115 * rayanRatio, 115);
     this.player.setCollideWorldBounds(true);
     this.overworldUIElements.push(this.player);
 
@@ -1878,62 +1921,86 @@ class SAPScene extends Phaser.Scene {
     this.sankethSprite.setDisplaySize(115 * sankethRatio, 115);
     this.overworldUIElements.push(this.sankethSprite);
 
-    // Corporate Outage Boss
-    this.sapBoss = this.physics.add.image(620, 260, 'char_anam_clean');
-    this.sapBoss.setTint(0x5555ff); // Corporate blue tint
+    // Corporate Outage Boss - Corporate Burnout Hydra
+    this.sapBoss = this.physics.add.image(620, 260, 'char_boss_corporate_burnout_hydra_clean');
     const bossRatio = this.sapBoss.width / this.sapBoss.height;
-    this.sapBoss.setDisplaySize(130 * bossRatio, 130);
+    this.sapBoss.setDisplaySize(140 * bossRatio, 140);
     this.sapBoss.setImmovable(true);
     this.physics.add.collider(this.player, this.sapBoss, this.touchSAPBoss, undefined, this);
     this.overworldUIElements.push(this.sapBoss);
+  }
 
-    // Anam (Spawns in Part 2)
-    if (this.staminaRestored && !this.anamRecruited) {
-      this.anamSprite = this.physics.add.image(400, 400, 'char_anam_clean');
-      const anamRatio = this.anamSprite.width / this.anamSprite.height;
-      this.anamSprite.setDisplaySize(110 * anamRatio, 110);
-      this.anamSprite.setImmovable(true);
-      this.physics.add.collider(this.player, this.anamSprite, this.talkToAnam, undefined, this);
-      this.overworldUIElements.push(this.anamSprite);
-      
-      const promptText = this.add.text(400, 330, 'Talk to Anam!', {
-        fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-        fontSize: '9px',
-        color: '#63b3ed',
-      }).setOrigin(0.5).setStroke('#000000', 3);
-      this.overworldUIElements.push(promptText);
+  private touchSAPBoss() {
+    if (this.inBattle) return;
+
+    if (this.currentStage === 'SAP_DEFEAT') {
+      this.inBattle = true;
+      soundManager.stopBGM();
+      soundManager.playSFX('exclamation');
+
+      const triggerDialogue = this.registry.get('triggerDialogue');
+      triggerDialogue(
+        'Sanketh',
+        '/images/Sanketh.png',
+        [
+          'Oh no, Rayan! The Corporate Burnout Hydra is blocking the exit!',
+          'It is radiating sheer exhaust aura. Let\'s try to fight it!'
+        ],
+        () => {
+          this.cameras.main.flash(300, 255, 255, 255);
+          this.time.delayedCall(300, () => {
+            soundManager.playBGM('battle');
+            this.setupFinalBattleUI();
+          });
+        }
+      );
     }
   }
 
   private loadKalyanNagarLocation() {
+    this.inBattle = false;
+    this.clearBattleUI();
     this.overworldUIElements.forEach(el => el.destroy());
     this.overworldUIElements = [];
+    this.polaroidObjects = [];
 
     // Cafe Background
     const bg = this.add.image(400, 300, 'kalyan_nagar_cafe');
     bg.setDisplaySize(800, 600);
     this.overworldUIElements.push(bg);
 
-    soundManager.playBGM('cafe'); // Cozy café theme
+    // Warm lofi melody
+    soundManager.playBGM('cafe');
+    soundManager.startRain();
 
-    const title = this.add.text(400, 40, 'Kalyan Nagar Café (Refill Loop)', {
+    const title = this.add.text(400, 40, 'Level 4: Kalyan Nagar CafÃ© (Rainy Night)', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-      fontSize: '14px',
+      fontSize: '13px',
       color: '#ffffff',
     }).setOrigin(0.5).setStroke('#000000', 4);
     this.overworldUIElements.push(title);
 
-    const helpText = this.add.text(400, 75, 'Walk to the counter and talk to the Barista!', {
+    const helpText = this.add.text(400, 75, 'Find 3 Memory Polaroids scattered around the cafÃ©!', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-      fontSize: '9px',
+      fontSize: '8px',
       color: '#f6ad55',
     }).setOrigin(0.5).setStroke('#000000', 4);
     this.overworldUIElements.push(helpText);
 
-    // Ryan overworld
-    this.player = this.physics.add.sprite(150, 450, 'char_ryan_clean');
-    const ryanRatio = this.player.width / this.player.height;
-    this.player.setDisplaySize(115 * ryanRatio, 115);
+    // Initialize rain drops
+    this.rainDrops = [];
+    for (let i = 0; i < 45; i++) {
+      this.rainDrops.push({
+        x: Phaser.Math.Between(0, 800),
+        y: Phaser.Math.Between(-10, 600),
+        speed: Phaser.Math.Between(4, 8)
+      });
+    }
+
+    // Rayan overworld
+    this.player = this.physics.add.sprite(150, 450, 'char_rayan_clean');
+    const rayanRatio = this.player.width / this.player.height;
+    this.player.setDisplaySize(115 * rayanRatio, 115);
     this.player.setCollideWorldBounds(true);
     this.overworldUIElements.push(this.player);
 
@@ -1943,19 +2010,265 @@ class SAPScene extends Phaser.Scene {
     this.sankethSprite.setDisplaySize(115 * sankethRatio, 115);
     this.overworldUIElements.push(this.sankethSprite);
 
-    // Barista (Cafe Clerk NPC)
-    this.barista = this.physics.add.image(550, 280, 'char_anam_clean');
-    const baristaRatio = this.barista.width / this.barista.height;
-    this.barista.setDisplaySize(110 * baristaRatio, 110);
-    this.barista.setImmovable(true);
-    this.physics.add.collider(this.player, this.barista, this.talkToBarista, undefined, this);
-    this.overworldUIElements.push(this.barista);
+    // Spawn 3 Memory Polaroids (represented by glowing golden shield items)
+    const pols = [
+      { x: 220, y: 350, id: 1, text: 'Standing under a single tiny umbrella waiting out the downpour.' },
+      { x: 420, y: 320, id: 2, text: '0.5x speed conversations over lukewarm tea after brutal office shifts.' },
+      { x: 560, y: 380, id: 3, text: 'Navigating corporate politics like two guys who had no idea what they were doing at first.' }
+    ];
+
+    pols.forEach((p, idx) => {
+      const polImg = this.physics.add.image(p.x, p.y, 'char_student_male_clean');
+      polImg.setTint(0xffd700); // Golden shine
+      polImg.setDisplaySize(25, 25);
+      polImg.setBodySize(25, 25); // Resize physics body so it doesn't overlap immediately
+      
+      const baseScaleX = polImg.scaleX;
+      const baseScaleY = polImg.scaleY;
+
+      this.tweens.add({
+        targets: polImg,
+        scaleX: baseScaleX * 1.3,
+        scaleY: baseScaleY * 1.3,
+        yoyo: true,
+        repeat: -1,
+        duration: 600 + idx * 100
+      });
+
+      this.physics.add.overlap(this.player, polImg, () => {
+        this.collectPolaroid(p.id, p.text, polImg);
+      }, undefined, this);
+
+      this.overworldUIElements.push(polImg);
+      this.polaroidObjects.push(polImg);
+    });
+  }
+
+  private collectPolaroid(id: number, message: string, obj: any) {
+    obj.destroy();
+    soundManager.playSFX('victory');
+    
+    // Lock movement
+    this.introActive = true;
+    this.player.setVelocity(0, 0);
+
+    const triggerDialogue = this.registry.get('triggerDialogue');
+    triggerDialogue(
+      `Memory Polaroid #${id}`,
+      '',
+      [message],
+      () => {
+        this.introActive = false;
+        this.polaroidsCollected++;
+        if (this.polaroidsCollected === 3) {
+          this.revealTableZone();
+        }
+      }
+    );
+  }
+
+  private revealTableZone() {
+    // Show Table Seat indicator
+    this.tableZone = this.add.circle(300, 420, 30, 0x48bb78, 0.3);
+    this.physics.add.existing(this.tableZone, true); // Enable static physics body for overlap detection!
+    this.overworldUIElements.push(this.tableZone);
+
+    this.tableIndicatorText = this.add.text(300, 385, 'Walk here to sit at the table!', {
+      fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
+      fontSize: '8px',
+      color: '#48bb78',
+    }).setOrigin(0.5).setStroke('#000000', 3);
+    this.overworldUIElements.push(this.tableIndicatorText);
+
+    // Pulse zone alpha
+    this.tweens.add({
+      targets: this.tableZone,
+      alpha: 0.1,
+      yoyo: true,
+      repeat: -1,
+      duration: 600
+    });
+
+    // Add overlap trigger
+    const trigger = this.physics.add.overlap(this.player, this.tableZone, () => {
+      this.physics.world.removeCollider(trigger);
+      this.triggerTableScene();
+    }, undefined, this);
+  }
+
+  private triggerTableScene() {
+    this.introActive = true;
+    this.player.setVelocity(0, 0);
+    if (this.tableIndicatorText) this.tableIndicatorText.destroy();
+    if (this.tableZone) this.tableZone.destroy();
+
+    // Position player and Sanketh nicely sitting at the table
+    this.player.setPosition(270, 420);
+    this.sankethSprite.setPosition(330, 420);
+
+    const triggerDialogue = this.registry.get('triggerDialogue');
+    triggerDialogue(
+      'Rayan',
+      '/images/Rayan.png',
+      [
+        'Remember when you were struggling to find your footing in your career? Seeing you break through and make it where you wanted to be was huge, Sanketh.'
+      ],
+      () => {
+        triggerDialogue(
+          'Sanketh',
+          '/images/Sanketh.png',
+          [
+            'I couldn\'t have done it without you. And watching you transformâ€”navigating loneliness, maturing into an incredible husband, staying the smartest guy in the room... you inspired me every day, bro.'
+          ],
+          () => {
+            this.triggerAnamEntrance();
+          }
+        );
+      }
+    );
+  }
+
+  private triggerAnamEntrance() {
+    // Spawn Anam and walk her to the table
+    this.anamSprite = this.physics.add.sprite(100, 420, 'char_anam_clean');
+    const anamRatio = this.anamSprite.width / this.anamSprite.height;
+    this.anamSprite.setDisplaySize(115 * anamRatio, 115);
+    this.overworldUIElements.push(this.anamSprite);
+
+    // Create tea tray graphics object
+    const tray = this.add.graphics();
+    // Draw brown tray
+    tray.fillStyle(0x8b5a2b, 1);
+    tray.fillRect(-20, -5, 40, 10);
+    // Draw 3 small white tea cups (for Rayan, Sanketh, Anam)
+    tray.fillStyle(0xffffff, 1);
+    tray.fillRect(-14, -13, 8, 8); // cup 1
+    tray.fillRect(-2, -13, 8, 8);  // cup 2
+    tray.fillRect(10, -13, 8, 8);  // cup 3
+    // Draw little handles
+    tray.fillStyle(0x8b5a2b, 1);
+    tray.fillRect(-24, -3, 4, 6);
+    tray.fillRect(20, -3, 4, 6);
+    
+    tray.setPosition(100, 440);
+    this.overworldUIElements.push(tray);
+
+    // Walk Anam to table
+    this.tweens.add({
+      targets: this.anamSprite,
+      x: 210,
+      duration: 1000
+    });
+
+    // Move tray to the table in front of them
+    this.tweens.add({
+      targets: tray,
+      x: 250,
+      y: 435,
+      duration: 1000,
+      onComplete: () => {
+        soundManager.playSFX('click'); // sound of placing tray
+        
+        const triggerDialogue = this.registry.get('triggerDialogue');
+        triggerDialogue(
+          'Anam',
+          '/images/Anam.png',
+          [
+            'I saw you two heading out here looking completely drained. Youâ€™ve both been carrying so much on your shoulders lately.',
+          ],
+          () => {
+            triggerDialogue(
+              'Rayan',
+              '/images/Rayan.png',
+              [
+                'We tried to tackle everything head-on at SAP, but it felt like hitting a brick wall.'
+              ],
+              () => {
+                triggerDialogue(
+                  'Anam',
+                  '/images/Anam.png',
+                  [
+                    'That\'s because you two always try to protect everyone else and figure it out alone. But you don\'t have to carry the load by yourselves. We\'ve always been a teamâ€”and I\'ve got your backs, always.'
+                  ],
+                  () => {
+                    triggerDialogue(
+                      'Sanketh',
+                      '/images/Sanketh.png',
+                      [
+                        'We couldn\'t ask for a better friend.'
+                      ],
+                      () => {
+                        triggerDialogue(
+                          'Anam',
+                          '/images/Anam.png',
+                          [
+                            'Now drink your tea. We\'re going back to SAP, and this time, we finish it together.'
+                          ],
+                          () => {
+                            this.transitionToRematch();
+                          }
+                        );
+                      }
+                    );
+                  }
+                );
+              }
+            );
+          }
+        );
+      }
+    });
+  }
+
+  private transitionToRematch() {
+    this.cameras.main.fadeOut(1000, 0, 0, 0, (_camera: any, progress: number) => {
+      if (progress === 1) {
+        this.currentStage = 'REM_SAP';
+        this.inBattle = true;
+        this.shieldBroken = false;
+        
+        // Add Anam to party registry
+        const updateParty = this.registry.get('updateParty');
+        updateParty('Anam');
+        
+        // Fully restore HP
+        this.playerHp = 150;
+        this.bossHp = 200;
+
+        // Restore overworld visibility, then fade in and boot rematch
+        this.loadSAPLocation();
+        this.cameras.main.fadeIn(500, 0, 0, 0);
+        this.setupFinalBattleUI();
+      }
+    });
   }
 
   update() {
     if (this.isLevelComplete || this.inBattle) {
       if (this.player) this.player.setVelocity(0, 0);
       return;
+    }
+
+    if (this.introActive) {
+      this.player.setVelocity(0, 0);
+      return;
+    }
+
+    // Render lofi rain in Kalyan Nagar Stage
+    if (this.currentStage === 'KALYAN_NAGAR') {
+      this.vfxGraphics.clear();
+      this.vfxGraphics.lineStyle(1.5, 0x90caf9, 0.4);
+      this.rainDrops.forEach((drop) => {
+        drop.y += drop.speed;
+        if (drop.y > 600) {
+          drop.y = -10;
+          drop.x = Phaser.Math.Between(0, 800);
+        }
+        this.vfxGraphics.beginPath();
+        this.vfxGraphics.moveTo(drop.x, drop.y);
+        this.vfxGraphics.lineTo(drop.x - 1, drop.y + 8);
+        this.vfxGraphics.strokePath();
+      });
     }
 
     let vx = 0;
@@ -1982,137 +2295,8 @@ class SAPScene extends Phaser.Scene {
     }
   }
 
-  private touchSAPBoss() {
-    if (this.inBattle) return;
-
-    if (!this.staminaRestored) {
-      // Scripted Wipeout Battle
-      this.inBattle = true;
-      soundManager.stopBGM();
-      soundManager.playSFX('exclamation');
-
-      const triggerDialogue = this.registry.get('triggerDialogue');
-      triggerDialogue(
-        'SAP Outage Boss',
-        '/images/Anam.png',
-        [
-          'SERVER OUTAGE COMPROMISED! OVERTIME DETECTED!',
-          'Your stamina levels are too low to process this bug!',
-          'BEHOLD MY CORE CRITICAL SHIFT ERUPTION!'
-        ],
-        () => {
-          this.executeWipeout();
-        }
-      );
-    } else if (!this.anamRecruited) {
-      // Boss has Unresolved Bug Shield
-      soundManager.playSFX('exclamation');
-      const triggerDialogue = this.registry.get('triggerDialogue');
-      triggerDialogue(
-        'Sanketh',
-        '/images/Sanketh.png',
-        [
-          'Oh no! The Corporate Outage Boss activated the [Unresolved Bug Shield]!',
-          'Our attacks are dealing 0 damage! We cannot break through!',
-          'A text hint appears: "You need a backend wizard who knows the logic!"',
-          'Let us find Anam! She was seen in the office lobby area nearby!'
-        ],
-        () => {
-          this.loadSAPLocation(); // Refresh to spawn Anam
-        }
-      );
-    } else {
-      // Real Final Fight!
-      this.inBattle = true;
-      soundManager.stopBGM();
-      this.cameras.main.flash(300, 255, 255, 255);
-      this.time.delayedCall(300, () => {
-        soundManager.playBGM('battle');
-        this.setupFinalBattleUI();
-      });
-    }
-  }
-
-  private executeWipeout() {
-    this.cameras.main.flash(200, 255, 0, 0);
-    soundManager.playSFX('hit');
-
-    this.cameras.main.fadeOut(1000, 0, 0, 0, (_camera: any, progress: number) => {
-      if (progress === 1) {
-        soundManager.playSFX('defeat');
-        const triggerDialogue = this.registry.get('triggerDialogue');
-        triggerDialogue(
-          'Narrator',
-          '/images/Rayan.png',
-          [
-            'Ryan and Sanketh collapsed under overtime pressure...!',
-            'Stamina too low! Go refresh at Kalyan Nagar Café!'
-          ],
-          () => {
-            this.cameras.main.fadeIn(500, 0, 0, 0);
-            this.loadKalyanNagarLocation();
-            this.inBattle = false;
-          }
-        );
-      }
-    });
-  }
-
-  private talkToBarista() {
-    soundManager.playSFX('click');
-    const triggerDialogue = this.registry.get('triggerDialogue');
-    triggerDialogue(
-      'Barista Clerk',
-      '/images/Anam.png',
-      [
-        'Welcome to Café Pokémon Center! You guys look absolutely drained.',
-        'Here is our Special Espresso Brew, freshly ground and whipped!',
-        'Drink up to fully restore your health and overtime stamina!'
-      ],
-      () => {
-        soundManager.playSFX('victory');
-        this.cameras.main.flash(500, 255, 255, 100);
-        
-        triggerDialogue(
-          'Narrator',
-          '/images/Rayan.png',
-          [
-            'Ryan and Sanketh drank the Special Espresso Brew!',
-            'HP restored to full! Stamina is fully replenished!',
-            'Let us return to SAP Labs lobby and face the boss!'
-          ],
-          () => {
-            this.staminaRestored = true;
-            this.loadSAPLocation();
-          }
-        );
-      }
-    );
-  }
-
-  private talkToAnam() {
-    soundManager.playSFX('click');
-    const triggerDialogue = this.registry.get('triggerDialogue');
-    triggerDialogue(
-      'Anam',
-      '/images/Anam.png',
-      [
-        'Hey guys! I heard there is a critical server crash and shield issue.',
-        'Need a backend wizard who actually knows the logical flow?',
-        'Count me in! I will use [Clutch Assist] to override that Outage Shield.',
-        'Let us go crush this corporate overtime once and for all!'
-      ],
-      () => {
-        soundManager.playSFX('victory');
-        const updateParty = this.registry.get('updateParty');
-        updateParty('Anam');
-        this.anamRecruited = true;
-        this.loadSAPLocation();
-      }
-    );
-  }
-
   private setupFinalBattleUI() {
+    this.clearBattleUI();
     // Hide overworld
     this.overworldUIElements.forEach(el => el.setVisible(false));
 
@@ -2121,96 +2305,182 @@ class SAPScene extends Phaser.Scene {
     graphics.fillStyle(0x3182ce, 0.4);
     graphics.fillEllipse(250, 460, 360, 80); // player base
     graphics.fillEllipse(580, 240, 240, 60); // boss base
+    graphics.setDepth(0);
     this.battleUIElements.push(graphics);
 
-    // Ryan Battle sprite
-    this.ryanSpriteInBattle = this.add.image(150, 400, 'char_ryan_clean');
-    const ryanRatio = this.ryanSpriteInBattle.width / this.ryanSpriteInBattle.height;
-    this.ryanSpriteInBattle.setDisplaySize(160 * ryanRatio, 160);
-    this.battleUIElements.push(this.ryanSpriteInBattle);
+    // Rayan Battle sprite
+    this.rayanSpriteInBattle = this.add.image(150, 400, 'char_rayan_clean');
+    const rayanRatio = this.rayanSpriteInBattle.width / this.rayanSpriteInBattle.height;
+    this.rayanSpriteInBattle.setDisplaySize(160 * rayanRatio, 160);
+    this.rayanSpriteInBattle.setDepth(2);
+    this.battleUIElements.push(this.rayanSpriteInBattle);
 
     // Sanketh Battle sprite
     this.sankethSpriteInBattle = this.add.image(240, 410, 'char_sanketh_clean');
     const sankethRatio = this.sankethSpriteInBattle.width / this.sankethSpriteInBattle.height;
     this.sankethSpriteInBattle.setDisplaySize(160 * sankethRatio, 160);
+    this.sankethSpriteInBattle.setDepth(2);
     this.battleUIElements.push(this.sankethSpriteInBattle);
 
-    // Anam Battle sprite
-    this.anamSpriteInBattle = this.add.image(320, 410, 'char_anam_clean');
-    const anamRatio = this.anamSpriteInBattle.width / this.anamSpriteInBattle.height;
-    this.anamSpriteInBattle.setDisplaySize(160 * anamRatio, 160);
-    this.battleUIElements.push(this.anamSpriteInBattle);
+    // Anam Battle sprite (spawns in Rematch)
+    if (this.currentStage === 'REM_SAP') {
+      this.anamSpriteInBattle = this.add.image(320, 410, 'char_anam_clean');
+      const anamRatio = this.anamSpriteInBattle.width / this.anamSpriteInBattle.height;
+      this.anamSpriteInBattle.setDisplaySize(160 * anamRatio, 160);
+      this.anamSpriteInBattle.setDepth(2);
+      this.battleUIElements.push(this.anamSpriteInBattle);
+    }
 
     // SAP Boss Battle sprite
-    this.bossSpriteInBattle = this.add.image(580, 190, 'char_anam_clean');
-    this.bossSpriteInBattle.setTint(0x5555ff);
+    this.bossSpriteInBattle = this.add.image(580, 190, 'char_boss_corporate_burnout_hydra_clean');
     const bossRatio = this.bossSpriteInBattle.width / this.bossSpriteInBattle.height;
-    this.bossSpriteInBattle.setDisplaySize(150 * bossRatio, 150);
+    this.bossSpriteInBattle.setDisplaySize(180 * bossRatio, 180);
+    this.bossSpriteInBattle.setDepth(2);
     this.battleUIElements.push(this.bossSpriteInBattle);
 
-    // Player HUD (Positioned at bottom-right above text box to prevent overlap)
+    // Player HUD
     const hud1 = this.add.rectangle(580, 440, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
+    hud1.setDepth(3);
     const text1 = this.add.text(470, 423, 'PARTY HP', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '11px',
       color: '#ffffff',
     });
+    text1.setDepth(3);
     this.playerHpBar = this.add.graphics();
+    this.playerHpBar.setDepth(3);
     this.battleUIElements.push(hud1, text1, this.playerHpBar);
 
     // Boss HUD
     const hud2 = this.add.rectangle(580, 115, 260, 55, 0x1a202c, 0.85).setStrokeStyle(3, 0xffffff);
-    const text2 = this.add.text(470, 98, 'SAP OUTAGE BOSS', {
+    hud2.setDepth(3);
+    const text2 = this.add.text(470, 98, 'THE BURNOUT HYDRA', {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-      fontSize: '11px',
+      fontSize: '10px',
       color: '#ffffff',
     });
+    text2.setDepth(3);
     this.bossHpBar = this.add.graphics();
+    this.bossHpBar.setDepth(3);
     this.battleUIElements.push(hud2, text2, this.bossHpBar);
 
     this.updateHpBars();
 
     // Box bottom
     const boxBg = this.add.rectangle(400, 540, 760, 80, 0x16171d, 0.9).setStrokeStyle(3, 0x4a5568);
-    this.battleLogText = this.add.text(50, 520, 'Outage Shield is active! Attacks deal 0 damage!', {
+    boxBg.setDepth(3);
+    
+    let initialLog = 'The Corporate Burnout Hydra blocks your path!';
+    if (this.currentStage === 'REM_SAP') {
+      initialLog = 'Rematch! Turn 1: The Corporate Burnout Hydra activates "Office Politics Shield"! Attacks deal 0 damage!';
+    }
+    
+    this.battleLogText = this.add.text(50, 520, initialLog, {
       fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
       fontSize: '10px',
       color: '#ffffff',
       wordWrap: { width: 700 }
     });
+    this.battleLogText.setDepth(3);
     this.battleUIElements.push(boxBg, this.battleLogText);
 
     this.createFinalBattleMenu();
   }
 
   private createFinalBattleMenu() {
-    const buttons = [
-      { text: 'Clutch Assist (Anam)', x: 180, y: 565, action: () => this.executeFinalTurn('anam') },
-      { text: 'Data Surge (Sanketh)', x: 400, y: 565, action: () => this.executeFinalTurn('sanketh') },
-      { text: 'Mubarak Beam (Ryan)', x: 620, y: 565, action: () => this.executeFinalTurn('ryan') }
-    ];
-
-    buttons.forEach((btn) => {
-      const t = this.add.text(btn.x, btn.y, btn.text, {
-        fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
-        fontSize: '9px',
-        color: '#f687b3',
-        backgroundColor: '#2d3748',
-        padding: { x: 8, y: 5 }
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      this.battleUIElements.push(t);
-
-      t.on('pointerover', () => t.setColor('#ffffff'));
-      t.on('pointerout', () => t.setColor('#f687b3'));
-      t.on('pointerdown', () => {
-        if (this.isLevelComplete || this.isTurnExecuting) return;
-        soundManager.playSFX('click');
-        btn.action();
-      });
+    // Clear old text buttons if any
+    this.battleUIElements = this.battleUIElements.filter(el => {
+      if (el instanceof Phaser.GameObjects.Text && (el.y === 565 || el.y === 555)) {
+        el.destroy();
+        return false;
+      }
+      return true;
     });
+
+    if (this.currentStage === 'SAP_DEFEAT') {
+      // Stage 1 Defeat Battle Buttons
+      const buttons = [
+        { text: 'Data Surge (Sanketh)', x: 260, y: 565, action: () => this.executeDefeatTurn('sanketh') },
+        { text: 'Mubarak Beam (Rayan)', x: 540, y: 565, action: () => this.executeDefeatTurn('rayan') }
+      ];
+
+      buttons.forEach((btn) => {
+        const t = this.add.text(btn.x, btn.y, btn.text, {
+          fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
+          fontSize: '9px',
+          color: '#f687b3',
+          backgroundColor: '#2d3748',
+          padding: { x: 8, y: 5 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        t.setDepth(4);
+        this.battleUIElements.push(t);
+
+        t.on('pointerover', () => t.setColor('#ffffff'));
+        t.on('pointerout', () => t.setColor('#f687b3'));
+        t.on('pointerdown', () => {
+          if (this.isTurnExecuting) return;
+          soundManager.playSFX('click');
+          btn.action();
+        });
+      });
+    } else if (this.currentStage === 'REM_SAP') {
+      if (this.qteActive) {
+        // Rematch QTE prompt
+        const btn = this.add.text(400, 555, '[ Press SPACE / Tap Screen to Sync ]', {
+          fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
+          fontSize: '11px',
+          color: '#ffd700',
+          backgroundColor: '#16171d',
+          padding: { x: 12, y: 8 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        btn.setDepth(4);
+        this.battleUIElements.push(btn);
+
+        // Flashing animation
+        this.tweens.add({
+          targets: btn,
+          alpha: 0.3,
+          yoyo: true,
+          repeat: -1,
+          duration: 500
+        });
+
+        btn.on('pointerdown', () => {
+          this.executeQTE();
+        });
+      } else {
+        // Rematch Normal Buttons
+        const buttons = [
+          { text: 'Clutch Support & Logic Shield', x: 200, y: 565, action: () => this.executeRematchTurn('anam') },
+          { text: 'Data Surge (Sanketh)', x: 460, y: 565, action: () => this.executeRematchTurn('sanketh') },
+          { text: 'Mubarak Beam (Rayan)', x: 690, y: 565, action: () => this.executeRematchTurn('rayan') }
+        ];
+
+        buttons.forEach((btn) => {
+          const t = this.add.text(btn.x, btn.y, btn.text, {
+            fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
+            fontSize: '9px',
+            color: '#f687b3',
+            backgroundColor: '#2d3748',
+            padding: { x: 8, y: 5 }
+          }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          t.setDepth(4);
+          this.battleUIElements.push(t);
+
+          t.on('pointerover', () => t.setColor('#ffffff'));
+          t.on('pointerout', () => t.setColor('#f687b3'));
+          t.on('pointerdown', () => {
+            if (this.isTurnExecuting) return;
+            soundManager.playSFX('click');
+            btn.action();
+          });
+        });
+      }
+    }
   }
 
   private updateHpBars() {
+    if (!this.playerHpBar || !this.bossHpBar) return;
     // Player HP
     this.playerHpBar.clear();
     this.playerHpBar.fillStyle(0x4a5568, 1);
@@ -2230,98 +2500,267 @@ class SAPScene extends Phaser.Scene {
     this.bossHpBar.fillRect(470, 120, 220 * bPct, 10);
   }
 
-  private executeFinalTurn(attacker: 'anam' | 'sanketh' | 'ryan') {
+  private clearBattleUI() {
+    this.battleUIElements.forEach(el => {
+      if (el && el.destroy) {
+        el.destroy();
+      }
+    });
+    this.battleUIElements = [];
+    this.playerHpBar = null as any;
+    this.bossHpBar = null as any;
+    this.rayanSpriteInBattle = null as any;
+    this.sankethSpriteInBattle = null as any;
+    this.anamSpriteInBattle = null as any;
+    this.bossSpriteInBattle = null as any;
+    this.battleLogText = null as any;
+  }
+
+  private executeDefeatTurn(attacker: 'sanketh' | 'rayan') {
     this.isTurnExecuting = true;
-    let damage = 0;
-    let log = '';
+    this.battleLogText.setText(`${attacker === 'rayan' ? 'Rayan triggers Mubarak Beam' : 'Sanketh triggers Data Surge'}!\nBut the Hydra's active "Office Politics Shield" absorbs it (0 damage)!`);
 
-    if (attacker === 'anam') {
-      this.shieldBroken = true;
-      damage = 40;
-      log = 'Anam uses Clutch Assist!\nThe SAP Outage Shield has been completely shattered!';
-    } else if (attacker === 'sanketh') {
-      damage = this.shieldBroken ? 50 : 0;
-      log = this.shieldBroken 
-        ? 'Sanketh casts Data Surge!\nThe crash is bypassed!'
-        : 'Sanketh casts Data Surge!\nBut the shield absorbs the impact (0 damage)!';
-    } else if (attacker === 'ryan') {
-      damage = this.shieldBroken ? 90 : 0;
-      log = this.shieldBroken
-        ? 'Ryan triggers the Mubarak Beam!\nWedding energy completely compromises the bugs!'
-        : 'Ryan triggers the Mubarak Beam!\nBut the corporate shield deflects it (0 damage)!';
-    }
-
-    this.battleLogText.setText(log);
-
-    // Shake attacker
-    let targetSprite = this.ryanSpriteInBattle;
-    if (attacker === 'anam') targetSprite = this.anamSpriteInBattle;
-    else if (attacker === 'sanketh') targetSprite = this.sankethSpriteInBattle;
-
+    const sprite = attacker === 'rayan' ? this.rayanSpriteInBattle : this.sankethSpriteInBattle;
+    
     this.tweens.add({
-      targets: targetSprite,
+      targets: sprite,
       x: '+=20',
       yoyo: true,
       duration: 100,
       onComplete: () => {
         soundManager.playSFX('hit');
-        this.tweens.add({
-          targets: this.bossSpriteInBattle,
-          alpha: 0.2,
-          duration: 80,
-          yoyo: true,
-          repeat: 3,
-          onComplete: () => {
-            this.bossHp = Math.max(0, this.bossHp - damage);
-            this.updateHpBars();
+        this.time.delayedCall(1500, () => {
+          this.battleLogText.setText('The Corporate Burnout Hydra counterattacks with Corporate Overload dealing 999 damage!');
+          this.cameras.main.flash(200, 255, 0, 0);
+          soundManager.playSFX('hit');
+          
+          this.tweens.add({
+            targets: [this.rayanSpriteInBattle, this.sankethSpriteInBattle],
+            alpha: 0.3,
+            yoyo: true,
+            repeat: 2,
+            duration: 100,
+            onComplete: () => {
+              this.playerHp = 1; // Left at 1 HP!
+              this.updateHpBars();
 
-            if (this.bossHp <= 0) {
-              this.handleVictory();
-            } else {
-              this.time.delayedCall(1500, () => this.executeBossTurn());
+              // Trigger defeat dialogues
+              this.time.delayedCall(1500, () => {
+                const triggerDialogue = this.registry.get('triggerDialogue');
+                triggerDialogue(
+                  'Sanketh',
+                  '/images/Sanketh.png',
+                  [
+                    'We\'re running on absolute empty, man. You can\'t debug burnout with raw coffeeâ€”we need to step away.'
+                  ],
+                  () => {
+                    triggerDialogue(
+                      'Rayan',
+                      '/images/Rayan.png',
+                      [
+                        'Kalyan Nagar? Let\'s take a break, get some rain-slicked street air, and grab tea.'
+                      ],
+                      () => {
+                        this.cameras.main.fadeOut(1000, 0, 0, 0, (_camera: any, progress: number) => {
+                          if (progress === 1) {
+                            this.currentStage = 'KALYAN_NAGAR';
+                            this.inBattle = false;
+                            this.isTurnExecuting = false;
+                            this.cameras.main.fadeIn(500, 0, 0, 0);
+                            this.loadKalyanNagarLocation();
+                          }
+                        });
+                      }
+                    );
+                  }
+                );
+              });
             }
-          }
+          });
         });
       }
     });
   }
 
-  private executeBossTurn() {
-    const attacks = [
-      { name: 'Overtime Shift', dmg: 25, log: 'SAP Boss casts Overtime Shift!\nYour stamina takes a hit!' },
-      { name: 'Production Crash', dmg: 35, log: 'SAP Boss triggers a Production Crash!\nCritical server failure!' }
-    ];
+  private executeRematchTurn(attacker: 'anam' | 'sanketh' | 'rayan') {
+    this.isTurnExecuting = true;
+    let log = '';
 
-    const move = attacks[Math.floor(Math.random() * attacks.length)];
-    this.battleLogText.setText(move.log);
+    if (attacker === 'anam') {
+      this.shieldBroken = true;
+      log = 'Turn 2: Anam uses Clutch Support & Logic Shield!\nThe "Office Politics Shield" has been permanently shattered!';
+    } else {
+      log = `${attacker === 'rayan' ? 'Rayan uses Mubarak Beam' : 'Sanketh uses Data Surge'}!\nBut the Hydra's active "Office Politics Shield" absorbs it (0 damage)!`;
+    }
+
+    this.battleLogText.setText(log);
+
+    let sprite = this.rayanSpriteInBattle;
+    if (attacker === 'anam') sprite = this.anamSpriteInBattle;
+    else if (attacker === 'sanketh') sprite = this.sankethSpriteInBattle;
 
     this.tweens.add({
-      targets: this.bossSpriteInBattle,
-      x: '-=20',
+      targets: sprite,
+      x: '+=20',
       yoyo: true,
       duration: 100,
       onComplete: () => {
         soundManager.playSFX('hit');
-        this.tweens.add({
-          targets: [this.ryanSpriteInBattle, this.sankethSpriteInBattle, this.anamSpriteInBattle],
-          alpha: 0.2,
-          duration: 80,
-          yoyo: true,
-          repeat: 3,
-          onComplete: () => {
-            this.playerHp = Math.max(0, this.playerHp - move.dmg);
-            this.updateHpBars();
+        
+        if (this.shieldBroken) {
+          // Play shatter sound and flash
+          this.cameras.main.flash(300, 255, 255, 255);
+          soundManager.playSFX('victory');
+          
+          this.time.delayedCall(1500, () => {
+            const triggerDialogue = this.registry.get('triggerDialogue');
+            triggerDialogue(
+              'Sanketh',
+              '/images/Sanketh.png',
+              [
+                'We started as strangers in school hallways... but somewhere along the way, we became family.'
+              ],
+              () => {
+                triggerDialogue(
+                  'Rayan',
+                  '/images/Rayan.png',
+                  [
+                    'No matter how far the map stretches, nothing changes that.'
+                  ],
+                  () => {
+                    this.isTurnExecuting = false;
+                    this.qteActive = true;
+                    this.createFinalBattleMenu(); // Rebuild menu to show QTE button
+                  }
+                );
+              }
+            );
+          });
+        } else {
+          // Boss counters with small 0 damage move
+          this.time.delayedCall(1500, () => {
+            this.battleLogText.setText('The Hydra counters with Scope Creep! The attack deals 0 damage!');
+            soundManager.playSFX('click');
+            this.time.delayedCall(1200, () => {
+              this.battleLogText.setText('Office Politics Shield is active! Break it first!');
+              this.isTurnExecuting = false;
+            });
+          });
+        }
+      }
+    });
+  }
 
-            if (this.playerHp <= 0) {
-              this.handleDefeat();
-            } else {
-              this.time.delayedCall(1200, () => {
-                this.battleLogText.setText(this.shieldBroken ? 'What will your party do?' : 'Shield is active! Break it first!');
-                this.isTurnExecuting = false;
-              });
-            }
-          }
-        });
+  private executeQTE() {
+    if (!this.qteActive) return;
+    this.qteActive = false;
+    
+    // Remove QTE prompt from battle elements
+    this.battleUIElements = this.battleUIElements.filter(el => {
+      if (el instanceof Phaser.GameObjects.Text && (el.y === 565 || el.y === 555)) {
+        el.destroy();
+        return false;
+      }
+      return true;
+    });
+
+    this.battleLogText.setText('Rayan, Sanketh, and Anam execute joint attack "Brothers in Arms"!');
+    
+    // Flash white, trigger joint beams
+    let animationTimer = 0;
+    const interval = this.time.addEvent({
+      delay: 50,
+      callback: () => {
+        animationTimer += 50;
+        this.vfxGraphics.clear();
+        this.vfxGraphics.setAlpha(1.0);
+
+        const targetX = 580;
+        const targetY = 190;
+
+        // Grit Shield (Rayan - Greenish blue)
+        this.vfxGraphics.lineStyle(4, 0x48bb78, 0.8);
+        this.vfxGraphics.beginPath();
+        this.vfxGraphics.moveTo(150, 400);
+        this.vfxGraphics.lineTo(targetX, targetY);
+        this.vfxGraphics.strokePath();
+
+        // Data Surge (Sanketh - Gold)
+        this.vfxGraphics.lineStyle(5, 0xfacc15, 0.9);
+        this.vfxGraphics.beginPath();
+        this.vfxGraphics.moveTo(240, 410);
+        this.vfxGraphics.lineTo(targetX, targetY);
+        this.vfxGraphics.strokePath();
+
+        // Logic Beam (Anam - Rose red)
+        this.vfxGraphics.lineStyle(4, 0xf43f5e, 0.8);
+        this.vfxGraphics.beginPath();
+        this.vfxGraphics.moveTo(320, 410);
+        this.vfxGraphics.lineTo(targetX, targetY);
+        this.vfxGraphics.strokePath();
+
+        if (animationTimer >= 1200) {
+          interval.destroy();
+          this.vfxGraphics.clear();
+          this.executeRematchBurst();
+        }
+      },
+      callbackScope: this,
+      loop: true
+    });
+    soundManager.playSFX('text');
+  }
+
+  private executeRematchBurst() {
+    this.tweens.killTweensOf(this.bossSpriteInBattle);
+    
+    // Sparkle / Confetti explosion particles!
+    const targetX = 580;
+    const targetY = 190;
+    
+    soundManager.playSFX('hit');
+    this.cameras.main.shake(800, 0.03);
+
+    // Recreate confetti particles using graphics
+    let confettiTimer = 0;
+    const confettiInterval = this.time.addEvent({
+      delay: 30,
+      callback: () => {
+        confettiTimer += 30;
+        this.vfxGraphics.clear();
+        this.vfxGraphics.setAlpha(1.0);
+        
+        const colors = [0xfacc15, 0x38bdf8, 0xf43f5e, 0x48bb78, 0xffffff];
+        for (let i = 0; i < 40; i++) {
+          const px = targetX + Phaser.Math.Between(-150, 150);
+          const py = targetY + Phaser.Math.Between(-150, 150);
+          const size = Phaser.Math.Between(2, 5);
+          const col = colors[Phaser.Math.Between(0, colors.length - 1)];
+          this.vfxGraphics.fillStyle(col, 0.7);
+          this.vfxGraphics.fillRect(px, py, size, size);
+        }
+
+        if (confettiTimer >= 1500) {
+          confettiInterval.destroy();
+          this.vfxGraphics.clear();
+        }
+      },
+      callbackScope: this,
+      loop: true
+    });
+
+    // Boss spins and shatters
+    this.tweens.add({
+      targets: this.bossSpriteInBattle,
+      scaleX: 0,
+      scaleY: 0,
+      angle: 720,
+      alpha: 0,
+      duration: 1500,
+      onComplete: () => {
+        this.bossHp = 0;
+        this.updateHpBars();
+        this.handleVictory();
       }
     });
   }
@@ -2330,7 +2769,7 @@ class SAPScene extends Phaser.Scene {
     this.isLevelComplete = true;
     soundManager.stopBGM();
     soundManager.playSFX('victory');
-    this.battleLogText.setText('SAP Outage Boss has been defeated!');
+    this.battleLogText.setText('The Corporate Burnout Hydra has been defeated!');
 
     this.tweens.add({
       targets: this.bossSpriteInBattle,
@@ -2344,7 +2783,7 @@ class SAPScene extends Phaser.Scene {
           '/images/Anam.png',
           [
             'Logical bugs: solved! Server status: green and stable!',
-            'Ryan, you are finally free from SAP overtime shift!',
+            'Rayan, you are finally free from SAP overtime shift!',
             'Level 4 complete. Now, a golden reveal awaits you!'
           ],
           () => {
@@ -2370,7 +2809,7 @@ class SAPScene extends Phaser.Scene {
 // 6. ENDING SCENE (CROSSROADS & POKEBALL)
 // ==========================================
 class EndingScene extends Phaser.Scene {
-  private ryanSprite!: Phaser.GameObjects.Image;
+  private rayanSprite!: Phaser.GameObjects.Image;
   private sankethSprite!: Phaser.GameObjects.Image;
   private pokeball!: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
   private isPokeballClickable = false;
@@ -2394,67 +2833,26 @@ class EndingScene extends Phaser.Scene {
       color: '#ffffff',
     }).setOrigin(0.5).setStroke('#000000', 4);
 
-    // Characters sized nicely (Ryan left, Sanketh right)
-    this.ryanSprite = this.add.image(280, 400, 'char_ryan_clean');
-    const ryanRatio = this.ryanSprite.width / this.ryanSprite.height;
-    this.ryanSprite.setDisplaySize(115 * ryanRatio, 115);
+    // Characters sized nicely (Rayan left off-screen, Sanketh right off-screen)
+    this.rayanSprite = this.add.image(-100, 400, 'char_rayan_clean');
+    const rayanRatio = this.rayanSprite.width / this.rayanSprite.height;
+    this.rayanSprite.setDisplaySize(115 * rayanRatio, 115);
+    this.rayanSprite.setAlpha(0);
 
-    this.sankethSprite = this.add.image(520, 400, 'char_sanketh_clean');
+    this.sankethSprite = this.add.image(900, 400, 'char_sanketh_clean');
     const sankethRatio = this.sankethSprite.width / this.sankethSprite.height;
     this.sankethSprite.setDisplaySize(115 * sankethRatio, 115);
+    this.sankethSprite.setAlpha(0);
 
-    // Trigger farewell dialogue
-    this.time.delayedCall(1000, () => {
-      const triggerDialogue = this.registry.get('triggerDialogue');
-      triggerDialogue(
-        'Sanketh',
-        '/images/Sanketh.png',
-        [
-          'We conquered School, Aakash, UVCE, and SAP together...',
-          'But my next journey takes me across the ocean.',
-          'It is time for us to walk our separate paths.'
-        ],
-        () => {
-          triggerDialogue(
-            'Ryan',
-            '/images/Rayan.png',
-            [
-              'No matter how far the map stretches, Sanketh...',
-              'Our party line-up never changes.'
-            ],
-            () => {
-              this.executeFarewellAnimation();
-            }
-          );
-        }
-      );
-    });
-  }
+    // Drop Golden PokÃ©ball in the center
+    this.dropGoldenPokeball();
 
-  private executeFarewellAnimation() {
-    soundManager.playSFX('click'); // high five sound
-
-    // Show a quick flash
-    this.cameras.main.flash(200, 255, 255, 255);
-
-    // Walk away down separate paths
-    this.tweens.add({
-      targets: this.ryanSprite,
-      x: 80,
-      alpha: 0.7,
-      duration: 2500,
-      ease: 'Power1'
-    });
-
-    this.tweens.add({
-      targets: this.sankethSprite,
-      x: 720,
-      alpha: 0.7,
-      duration: 2500,
-      ease: 'Power1',
-      onComplete: () => {
-        // Drop Golden Pokéball
-        this.dropGoldenPokeball();
+    // Listen for continue from React Wedding Card
+    this.registry.set('startFarewell', false);
+    this.registry.events.on('changedata-startFarewell', (_parent: any, value: boolean) => {
+      if (value) {
+        this.registry.events.off('changedata-startFarewell');
+        this.startFarewellSequence();
       }
     });
   }
@@ -2462,20 +2860,20 @@ class EndingScene extends Phaser.Scene {
   private dropGoldenPokeball() {
     soundManager.playSFX('exclamation');
     
-    // Spawn Pokéball at top
-    this.pokeball = this.physics.add.image(400, -50, 'char_ryan_clean'); // placeholder texture, we will draw a golden ball
+    // Spawn PokÃ©ball at top
+    this.pokeball = this.physics.add.image(400, -50, 'char_rayan_clean'); // placeholder texture, we will draw a golden ball
     this.pokeball.setTint(0xffd700); // Golden color
     this.pokeball.setDisplaySize(50, 50);
 
-    // Bounce animation
+    // Bounce animation to center
     this.tweens.add({
       targets: this.pokeball,
-      y: 400,
+      y: 300,
       ease: 'Bounce',
       duration: 1200,
       onComplete: () => {
         // Sparkle text
-        const sparkles = this.add.text(400, 340, 'CLICK ME!', {
+        const sparkles = this.add.text(400, 240, 'CLICK ME!', {
           fontFamily: '"Press Start 2P", "Courier New", Courier, monospace',
           fontSize: '11px',
           color: '#ffd700',
@@ -2495,13 +2893,106 @@ class EndingScene extends Phaser.Scene {
         this.pokeball.on('pointerdown', () => {
           if (!this.isPokeballClickable) return;
           this.isPokeballClickable = false;
+          sparkles.destroy();
           soundManager.playSFX('victory');
           
-          // Trigger final game complete React callback
+          // Shrink and fade out pokeball
+          this.tweens.add({
+            targets: this.pokeball,
+            scaleX: 0,
+            scaleY: 0,
+            alpha: 0,
+            duration: 400,
+            onComplete: () => {
+              this.pokeball.destroy();
+            }
+          });
+
+          // Trigger final game complete React callback (opens Wedding Card)
           const onGameComplete = this.registry.get('onGameComplete');
-          onGameComplete();
+          if (onGameComplete) onGameComplete();
+        });
+      }
+    });
+  }
+
+  private startFarewellSequence() {
+    // Walk characters into the crossroads from off-screen
+    this.tweens.add({
+      targets: this.rayanSprite,
+      x: 280,
+      alpha: 1,
+      duration: 1500,
+      ease: 'Power1'
+    });
+
+    this.tweens.add({
+      targets: this.sankethSprite,
+      x: 520,
+      alpha: 1,
+      duration: 1500,
+      ease: 'Power1',
+      onComplete: () => {
+        // Trigger farewell dialogue
+        const triggerDialogue = this.registry.get('triggerDialogue');
+        triggerDialogue(
+          'Sanketh',
+          '/images/Sanketh.png',
+          [
+            'We conquered School, Aakash, UVCE, and SAP together...',
+            'But my next journey takes me across the ocean.',
+            'It is time for us to walk our separate paths.'
+          ],
+          () => {
+            triggerDialogue(
+              'Rayan',
+              '/images/Rayan.png',
+              [
+                'No matter how far the map stretches, Sanketh...',
+                'Our party line-up never changes.'
+              ],
+              () => {
+                this.executeFarewellAnimation();
+              }
+            );
+          }
+        );
+      }
+    });
+  }
+
+  private executeFarewellAnimation() {
+    soundManager.playSFX('click'); // high five sound
+
+    // Show a quick flash
+    this.cameras.main.flash(200, 255, 255, 255);
+
+    // Walk away down separate paths (Rayan left, Sanketh right)
+    this.tweens.add({
+      targets: this.rayanSprite,
+      x: -150,
+      alpha: 0.3,
+      duration: 2500,
+      ease: 'Power1'
+    });
+
+    this.tweens.add({
+      targets: this.sankethSprite,
+      x: 950,
+      alpha: 0.3,
+      duration: 2500,
+      ease: 'Power1',
+      onComplete: () => {
+        // Fade scene out to black
+        this.cameras.main.fadeOut(1500, 0, 0, 0, (_camera: any, progress: number) => {
+          if (progress === 1) {
+            // Trigger final End Screen in React
+            const onShowEndScreen = this.registry.get('onShowEndScreen');
+            if (onShowEndScreen) onShowEndScreen();
+          }
         });
       }
     });
   }
 }
+

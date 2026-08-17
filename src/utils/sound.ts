@@ -5,6 +5,8 @@ class RetroSoundManager {
   private currentBgmInterval: any = null;
   private isMuted: boolean = false;
   private currentTrackName: 'school' | 'battle' | 'ending' | 'cafe' | '' = '';
+  private rainNode: AudioBufferSourceNode | null = null;
+  private rainGain: GainNode | null = null;
 
   constructor() {
     // AudioContext will be initialized on first user interaction to comply with browser policies
@@ -238,11 +240,63 @@ class RetroSoundManager {
     playNextNote();
   }
 
+  public startRain() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx || this.rainNode) return;
+
+    try {
+      const bufferSize = this.ctx.sampleRate * 2;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      const source = this.ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(600, this.ctx.currentTime);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.015, this.ctx.currentTime); // Soft background rain hiss
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      source.start();
+
+      this.rainNode = source;
+      this.rainGain = gain;
+    } catch (e) {
+      console.error('Error starting synthesized rain:', e);
+    }
+  }
+
+  public stopRain() {
+    if (this.rainNode) {
+      try {
+        this.rainNode.stop();
+      } catch (e) {}
+      this.rainNode = null;
+    }
+    if (this.rainGain) {
+      try {
+        this.rainGain.disconnect();
+      } catch (e) {}
+      this.rainGain = null;
+    }
+  }
+
   public stopBGM() {
     if (this.currentBgmInterval) {
       clearTimeout(this.currentBgmInterval);
       this.currentBgmInterval = null;
     }
+    this.stopRain();
   }
 
   private midiToFreq(note: number): number {
